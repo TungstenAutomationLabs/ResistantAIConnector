@@ -1,0 +1,1120 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Microsoft.Testing.Extensions.TrxReport.Abstractions</name>
+    </assembly>
+    <members>
+        <member name="T:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute">
+            <summary>
+            Indicates that compiler support for a particular feature is required for the location where this attribute is applied.
+            </summary>
+        </member>
+        <member name="M:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.#ctor(System.String)">
+            <summary>
+            Initialize a new instance of <see cref="T:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute"/>
+            </summary>
+            <param name="featureName">The name of the required compiler feature.</param>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName">
+            <summary>
+            The name of the compiler feature.
+            </summary>
+        </member>
+        <member name="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.IsOptional">
+            <summary>
+            If true, the compiler can choose to allow access to the location where this attribute is applied if it does not understand <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/>.
+            </summary>
+        </member>
+        <member name="F:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.RefStructs">
+            <summary>
+            The <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/> used for the ref structs C# feature.
+            </summary>
+        </member>
+        <member name="F:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.RequiredMembers">
+            <summary>
+            The <see cref="P:System.Runtime.CompilerServices.CompilerFeatureRequiredAttribute.FeatureName"/> used for the required members C# feature.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.DisableRuntimeMarshallingAttribute">
+             <summary>
+             Disables the built-in runtime managed/unmanaged marshalling subsystem for
+             P/Invokes, Delegate types, and unmanaged function pointer invocations.
+             </summary>
+             <remarks>
+             The built-in marshalling subsystem has some behaviors that cannot be changed due to
+             backward-compatibility requirements. This attribute allows disabling the built-in
+             subsystem and instead uses the following rules for P/Invokes, Delegates,
+             and unmanaged function pointer invocations:
+            
+             - All value types that do not contain reference type fields recursively (<c>unmanaged</c> in C#) are blittable
+             - Value types that recursively have any fields that have <c>[StructLayout(LayoutKind.Auto)]</c> are disallowed from interop.
+             - All reference types are disallowed from usage in interop scenarios.
+             - SetLastError support in P/Invokes is disabled.
+             - varargs support is disabled.
+             - LCIDConversionAttribute support is disabled.
+             </remarks>
+        </member>
+        <member name="T:System.Runtime.CompilerServices.RequiredMemberAttribute">
+            <summary>
+            Specifies that a type has required members or that a member is required.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.Versioning.OSPlatformAttribute">
+            <summary>
+            Base type for all platform-specific API attributes.
+            </summary>
+        </member>
+        <member name="T:System.Runtime.Versioning.ObsoletedOSPlatformAttribute">
+            <summary>
+            Marks APIs that were obsoleted in a given operating system version.
+            </summary>
+            <remarks>
+            Primarily used by OS bindings to indicate APIs that should not be used anymore.
+            </remarks>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute">
+            <summary>
+            Indicates that a parameter captures the expression passed for another parameter as a string.
+            </summary>
+            <summary>
+             Indicates that an API is experimental and it may change in the future.
+            </summary>
+            <remarks>
+              This attribute allows call sites to be flagged with a diagnostic that indicates that an experimental
+              feature is used. Authors can use this attribute to ship preview features in their assemblies.
+            </remarks>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.#ctor(System.String)">
+            <summary>
+             Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.ExperimentalAttribute"/> class, specifying the ID that the compiler will use
+             when reporting a use of the API the attribute applies to.
+            </summary>
+            <param name="diagnosticId">The ID that the compiler will use when reporting a use of the API the attribute applies to.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.DiagnosticId">
+            <summary>
+             Gets the ID that the compiler will use when reporting a use of the API the attribute applies to.
+            </summary>
+            <value>The unique diagnostic ID.</value>
+            <remarks>
+             The diagnostic ID is shown in build output for warnings and errors.
+             <para>This property represents the unique ID that can be used to suppress the warnings or errors, if needed.</para>
+            </remarks>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.ExperimentalAttribute.UrlFormat">
+            <summary>
+             Gets or sets the URL for corresponding documentation.
+             The API accepts a format string instead of an actual URL, creating a generic URL that includes the diagnostic ID.
+            </summary>
+            <value>The format string that represents a URL to corresponding documentation.</value>
+            <remarks>An example format string is <c>https://contoso.com/obsoletion-warnings/{0}</c>.</remarks>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.SetsRequiredMembersAttribute">
+            <summary>
+            Specifies that this constructor sets all required members for the current type, and callers
+            do not need to set any required members themselves.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute">
+            <summary>
+            Specifies the syntax used in a string.</summary>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.#ctor(System.String)">
+            <summary>
+            Initializes the <see cref="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute"/> with the identifier of the syntax used.</summary>
+            <param name="syntax">The syntax identifier.</param>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.#ctor(System.String,System.Object[])">
+            <summary>
+            Initializes the <see cref="T:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute"/> with the identifier of the syntax used.</summary>
+            <param name="syntax">The syntax identifier.</param>
+            <param name="arguments">Optional arguments associated with the specific syntax employed.</param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Syntax">
+            <summary>Gets the identifier of the syntax used.</summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Arguments">
+            <summary>Optional arguments associated with the specific syntax employed.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.CompositeFormat">
+            <summary>The syntax identifier for strings containing composite formats for string formatting.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.DateOnlyFormat">
+            <summary>The syntax identifier for strings containing date format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.DateTimeFormat">
+            <summary>The syntax identifier for strings containing date and time format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.EnumFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.Enum"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.GuidFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.Guid"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Json">
+            <summary>The syntax identifier for strings containing JavaScript Object Notation (JSON).</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.NumericFormat">
+            <summary>The syntax identifier for strings containing numeric format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Regex">
+            <summary>The syntax identifier for strings containing regular expressions.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.TimeOnlyFormat">
+            <summary>The syntax identifier for strings containing time format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.TimeSpanFormat">
+            <summary>The syntax identifier for strings containing <see cref="T:System.TimeSpan"/> format specifiers.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Uri">
+            <summary>The syntax identifier for strings containing URIs.</summary>
+        </member>
+        <member name="F:System.Diagnostics.CodeAnalysis.StringSyntaxAttribute.Xml">
+            <summary>The syntax identifier for strings containing XML.</summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute">
+            <summary>
+            Indicates that the specified method requires the ability to generate new code at runtime,
+            for example through <see cref="N:System.Reflection"/>.
+            </summary>
+            <remarks>
+            This allows tools to understand which methods are unsafe to call when compiling ahead of time.
+            </remarks>
+        </member>
+        <member name="M:System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute"/> class
+            with the specified message.
+            </summary>
+            <param name="message">
+            A message that contains information about the usage of dynamic code.
+            </param>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute.Message">
+            <summary>
+            Gets a message that contains information about the usage of dynamic code.
+            </summary>
+        </member>
+        <member name="P:System.Diagnostics.CodeAnalysis.RequiresDynamicCodeAttribute.Url">
+            <summary>
+            Gets or sets an optional URL that contains more information about the method,
+            why it requires dynamic code, and what options a consumer has to deal with it.
+            </summary>
+        </member>
+        <member name="T:System.Diagnostics.CodeAnalysis.UnscopedRefAttribute">
+            <summary>
+            Used to indicate a byref escapes and is not scoped.
+            </summary>
+            <remarks>
+            <para>
+            There are several cases where the C# compiler treats a <see langword="ref"/> as implicitly
+            <see langword="scoped"/> - where the compiler does not allow the <see langword="ref"/> to escape the method.
+            </para>
+            <para>
+            For example:
+            <list type="number">
+              <item><see langword="this"/> for <see langword="struct"/> instance methods.</item>
+              <item><see langword="ref"/> parameters that refer to <see langword="ref"/> <see langword="struct"/> types.</item>
+              <item><see langword="out"/> parameters.</item>
+            </list>
+            </para>
+            <para>
+            This attribute is used in those instances where the <see langword="ref"/> should be allowed to escape.
+            </para>
+            <para>
+            Applying this attribute, in any form, has impact on consumers of the applicable API. It is necessary for
+            API authors to understand the lifetime implications of applying this attribute and how it may impact their users.
+            </para>
+            </remarks>
+        </member>
+        <member name="T:System.Diagnostics.UnreachableException">
+            <summary>
+            Exception thrown when the program executes an instruction that was thought to be unreachable.
+            </summary>
+            <seealso href="https://learn.microsoft.com/en-us/dotnet/api/system.diagnostics.unreachableexception"/>
+            <seealso href="https://source.dot.net/#System.Private.CoreLib/src/libraries/System.Private.CoreLib/src/System/Diagnostics/UnreachableException.cs"/>
+        </member>
+        <member name="M:System.Diagnostics.UnreachableException.#ctor">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Diagnostics.UnreachableException"/> class with the default error message.
+            </summary>
+        </member>
+        <member name="M:System.Diagnostics.UnreachableException.#ctor(System.String)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Diagnostics.UnreachableException"/>
+            class with a specified error message.
+            </summary>
+            <param name="message">The error message that explains the reason for the exception.</param>
+        </member>
+        <member name="M:System.Diagnostics.UnreachableException.#ctor(System.String,System.Exception)">
+            <summary>
+            Initializes a new instance of the <see cref="T:System.Diagnostics.UnreachableException"/>
+            class with a specified error message and a reference to the inner exception that is the cause of
+            this exception.
+            </summary>
+            <param name="message">The error message that explains the reason for the exception.</param>
+            <param name="innerException">The exception that is the cause of the current exception.</param>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.DefaultMaxCacheSize">
+            <summary>The default maximum number of items to store in the cache.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.MaxExamineOnDrop">
+            <summary>The maximum number of cached items to examine when we need to replace an existing one in the cache with a new one.</summary>
+            <remarks>This is a somewhat arbitrary value, chosen to be small but at least as large as DefaultMaxCacheSize.</remarks>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.s_lastAccessed">
+            <summary>A read-through cache of one element, representing the most recently used regular expression.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.s_cacheDictionary">
+            <summary>The thread-safe dictionary storing all the items in the cache.</summary>
+            <remarks>
+            The concurrency level is initialized to 1 as we're using our own global lock for all mutations, so we don't need ConcurrentDictionary's
+            striped locking.  Capacity is initialized to 31, which is the same as (the private) ConcurrentDictionary.DefaultCapacity.
+            </remarks>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.s_cacheList">
+            <summary>A list of all the items in the cache.  Protected by <see cref="P:System.Text.RegularExpressions.RegexCache.SyncObj"/>.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.s_random">
+            <summary>Random number generator used to examine a subset of items when we need to drop one from a large list.  Protected by <see cref="P:System.Text.RegularExpressions.RegexCache.SyncObj"/>.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.s_maxCacheSize">
+            <summary>The current maximum number of items allowed in the cache.  This rarely changes.  Mostly protected by <see cref="P:System.Text.RegularExpressions.RegexCache.SyncObj"/>.</summary>
+        </member>
+        <member name="P:System.Text.RegularExpressions.RegexCache.SyncObj">
+            <summary>Lock used to protect shared state on mutations.</summary>
+        </member>
+        <member name="P:System.Text.RegularExpressions.RegexCache.MaxCacheSize">
+            <summary>Gets or sets the maximum size of the cache.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.RegexCache.Key">
+            <summary>Used as a key for <see cref="T:System.Text.RegularExpressions.RegexCache.Node"/>.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.RegexCache.Node">
+            <summary>Node for a cached Regex instance.</summary>
+        </member>
+        <member name="M:System.Text.RegularExpressions.RegexCache.Node.#ctor(System.Text.RegularExpressions.RegexCache.Key,System.Text.RegularExpressions.Regex)">
+            <summary>Node for a cached Regex instance.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.Node.Key">
+            <summary>The key associated with this cached instance.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.Node.Regex">
+            <summary>The cached Regex instance.</summary>
+        </member>
+        <member name="F:System.Text.RegularExpressions.RegexCache.Node.LastAccessStamp">
+            <summary>A "time" stamp representing the approximate last access time for this Regex.</summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.ValueMatch">
+            <summary>
+            Represents the results from a single regular expression match.
+            </summary>
+            <remarks>
+            The <see cref="T:System.Text.RegularExpressions.ValueMatch"/> type is immutable and has no public constructor. An instance of the <see cref="T:System.Text.RegularExpressions.ValueMatch"/> struct is returned by the
+            <see cref="!:Regex.ValueMatchEnumerator.Current"/> method when iterating over the results from calling <see cref="!:Regex.EnumerateMatches(ReadOnlySpan&lt;char&gt;)"/>.
+            </remarks>
+        </member>
+        <member name="M:System.Text.RegularExpressions.ValueMatch.#ctor(System.Int32,System.Int32)">
+            <summary>
+            Crates an instance of the <see cref="T:System.Text.RegularExpressions.ValueMatch"/> type based on the passed in <paramref name="index"/> and <paramref name="length"/>.
+            </summary>
+            <param name="index">The position in the original span where the first character of the captured sliced span is found.</param>
+            <param name="length">The length of the captured sliced span.</param>
+        </member>
+        <member name="P:System.Text.RegularExpressions.ValueMatch.Index">
+            <summary>
+            Gets the position in the original span where the first character of the captured sliced span is found.
+            </summary>
+        </member>
+        <member name="P:System.Text.RegularExpressions.ValueMatch.Length">
+            <summary>
+            Gets the length of the captured sliced span.
+            </summary>
+        </member>
+        <member name="T:System.Text.RegularExpressions.ValueMatchEnumerator">
+             <summary>
+             Represents an enumerator containing the set of successful matches found by iteratively applying a regular expression pattern to the input span.
+             </summary>
+             <remarks>
+             The enumerator has no public constructor. The <see cref="!:Regex.EnumerateMatches(ReadOnlySpan&lt;char&gt;)"/> method returns a <see cref="!:Regex.ValueMatchEnumerator"/>
+             object.The enumerator will lazily iterate over zero or more <see cref="T:System.Text.RegularExpressions.ValueMatch"/> objects. If there is at least one successful match in the span, then
+             <see cref="M:System.Text.RegularExpressions.ValueMatchEnumerator.MoveNext"/> returns <see langword="true"/> and <see cref="P:System.Text.RegularExpressions.ValueMatchEnumerator.Current"/> will contain the first <see cref="T:System.Text.RegularExpressions.ValueMatch"/>. If there are no successful matches,
+             then <see cref="M:System.Text.RegularExpressions.ValueMatchEnumerator.MoveNext"/> returns <see langword="false"/> and <see cref="P:System.Text.RegularExpressions.ValueMatchEnumerator.Current"/> throws an <see cref="T:System.InvalidOperationException"/>.
+            
+             This type is a ref struct since it stores the input span as a field in order to be able to lazily iterate over it.
+             </remarks>
+        </member>
+        <member name="M:System.Text.RegularExpressions.ValueMatchEnumerator.#ctor(System.Text.RegularExpressions.Regex,System.ReadOnlySpan{System.Char},System.Int32)">
+            <summary>
+            Creates an instance of the <see cref="T:System.Text.RegularExpressions.ValueMatchEnumerator"/> for the passed in <paramref name="regex"/> which iterates over <paramref name="input"/>.
+            </summary>
+            <param name="regex">The <see cref="T:System.Text.RegularExpressions.Regex"/> to use for finding matches.</param>
+            <param name="input">The input span to iterate over.</param>
+            <param name="startAt">The position where the engine should start looking for matches from.</param>
+        </member>
+        <member name="M:System.Text.RegularExpressions.ValueMatchEnumerator.GetEnumerator">
+            <summary>
+            Provides an enumerator that iterates through the matches in the input span.
+            </summary>
+            <returns>A copy of this enumerator.</returns>
+        </member>
+        <member name="M:System.Text.RegularExpressions.ValueMatchEnumerator.MoveNext">
+            <summary>
+            Advances the enumerator to the next match in the span.
+            </summary>
+            <returns>
+            <see langword="true"/> if the enumerator was successfully advanced to the next element; <see langword="false"/> if the enumerator cannot find additional matches.
+            </returns>
+        </member>
+        <member name="P:System.Text.RegularExpressions.ValueMatchEnumerator.Current">
+            <summary>
+            Gets the <see cref="T:System.Text.RegularExpressions.ValueMatch"/> element at the current position of the enumerator.
+            </summary>
+            <exception cref="T:System.InvalidOperationException">Enumeration has either not started or has already finished.</exception>
+        </member>
+        <member name="M:EnumPolyfill.GetValues``1">
+            <summary>
+            Retrieves an array of the values of the constants in a specified enumeration type.
+            </summary>
+            <returns>An array that contains the values of the constants in TEnum.</returns>
+        </member>
+        <member name="M:EnumPolyfill.GetNames``1">
+            <summary>
+            Retrieves an array of the names of the constants in a specified enumeration type.
+            </summary>
+            <returns>A string array of the names of the constants in TEnum.</returns>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.String)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.String,System.Boolean)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Converts the span of characters representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.ReadOnlySpan{System.Char},System.Boolean)">
+            <summary>
+            Converts the span of characters representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.TryParse``1(System.ReadOnlySpan{System.Char},``0@)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.TryParse``1(System.ReadOnlySpan{System.Char},System.Boolean,``0@)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants to an equivalent enumerated object. A parameter specifies whether the operation is case-sensitive. The return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:GuidPolyfill.TryParse(System.String,System.IFormatProvider,System.Guid@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:GuidPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.String,System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Byte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its byte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Byte@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its byte equivalent.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Byte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its byte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.String,System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Double@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its double-precision floating-point number equivalent. A return value indicates whether the conversion succeeded or failed.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Double@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its double-precision floating-point number equivalent..
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Double@)">
+            <summary>
+            Converts the string representation of a number in a specified style and culture-specific format to its double-precision floating-point number equivalent. A return value indicates whether the conversion succeeded or failed.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.String,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 32-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Int32@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its 32-bit signed integer equivalent.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 32-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.String,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 32-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Int32@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its 64-bit signed integer equivalent.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 64-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.String,System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.SByte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its sbyte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.SByte@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its sbyte equivalent.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.SByte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its sbyte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.String,System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Int16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its short equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Int16@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its short equivalent.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Int16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its short equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.String,System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.UInt32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its uint equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.UInt32@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its uint equivalent.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its uint equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.String,System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.UInt64@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ulong equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.UInt64@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its ulong equivalent.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ulong equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.String,System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.UInt16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ushort equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.UInt16@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its ushort equivalent.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ushort equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:Polyfill.CancelAsync(System.Threading.CancellationTokenSource)">
+            <summary>Communicates a request for cancellation asynchronously.</summary>
+            <remarks>
+            <para>
+            The associated <see cref="T:System.Threading.CancellationToken" /> will be notified of the cancellation
+            and will synchronously transition to a state where <see cref="P:System.Threading.CancellationToken.IsCancellationRequested"/> returns true.
+            Any callbacks or cancelable operations registered with the <see cref="T:System.Threading.CancellationToken"/>  will be executed asynchronously,
+            with the returned <see cref="T:System.Threading.Tasks.Task"/> representing their eventual completion.
+            </para>
+            <para>
+            Callbacks registered with the token should not throw exceptions.
+            However, any such exceptions that are thrown will be aggregated into an <see cref="T:System.AggregateException"/>,
+            such that one callback throwing an exception will not prevent other registered callbacks from being executed.
+            </para>
+            <para>
+            The <see cref="T:System.Threading.ExecutionContext"/> that was captured when each callback was registered
+            will be reestablished when the callback is invoked.
+            </para>
+            </remarks>
+            <exception cref="T:System.ObjectDisposedException">This <see cref="T:System.Threading.CancellationTokenSource"/> has been disposed.</exception>
+        </member>
+        <member name="M:Polyfill.AsReadOnly``2(System.Collections.Generic.IDictionary{``0,``1})">
+            <summary>
+            Returns a read-only <see cref="T:System.Collections.ObjectModel.ReadOnlyDictionary`2"/> wrapper for the current dictionary.
+            </summary>
+            <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
+            <typeparam name="TValue">The type of values in the dictionary.</typeparam>
+            <param name="dictionary">The dictionary to wrap.</param>
+            <returns>An object that acts as a read-only wrapper around the current <see cref="T:System.Collections.Generic.IDictionary`2"/>.</returns>
+            <exception cref="T:System.ArgumentNullException"><paramref name="dictionary"/> is null.</exception>
+        </member>
+        <member name="M:Polyfill.Index``1(System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.AggregateBy``3(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1},``2,System.Func{``2,``0,``2},System.Collections.Generic.IEqualityComparer{``1})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.AggregateBy``3(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1},System.Func{``1,``2},System.Func{``2,``0,``2},System.Collections.Generic.IEqualityComparer{``1})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.CountBy``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1},System.Collections.Generic.IEqualityComparer{``1})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},``0)">
+            <summary>
+            Produces a set items excluding <paramref name="item"/> by using the default equality comparer to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},``0[])">
+            <summary>
+            Produces the set difference of two sequences by using the default equality comparer to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},``0,System.Collections.Generic.IEqualityComparer{``0})">
+            <summary>
+            Produces a set items excluding <paramref name="item"/> by using <paramref name="comparer"/> to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <param name="comparer">An <see cref="T:System.Collections.Generic.IEqualityComparer`1"/> to compare values.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},System.Collections.Generic.IEqualityComparer{``0},``0[])">
+            <summary>
+            Produces the set difference of two sequences by <paramref name="comparer"/> to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.AsReadOnly``1(System.Collections.Generic.IList{``0})">
+            <summary>Returns a read-only <see cref="T:System.Collections.ObjectModel.ReadOnlyCollection`1" /> wrapper for the current collection.</summary>
+            <returns>An object that acts as a read-only wrapper around the current <see cref="T:System.Collections.Generic.IList`1" />.</returns>
+        </member>
+        <member name="M:Polyfill.AddRange``1(System.Collections.Generic.List{``0},System.ReadOnlySpan{``0})">
+            <summary>Adds the elements of the specified span to the end of the <see cref="T:System.Collections.Generic.List`1"/>.</summary>
+            <typeparam name="T">The type of elements in the list.</typeparam>
+            <param name="list">The list to which the elements should be added.</param>
+            <param name="source">The span whose elements should be added to the end of the <see cref="T:System.Collections.Generic.List`1"/>.</param>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="list"/> is null.</exception>
+        </member>
+        <member name="M:Polyfill.InsertRange``1(System.Collections.Generic.List{``0},System.Int32,System.ReadOnlySpan{``0})">
+            <summary>Inserts the elements of a span into the <see cref="T:System.Collections.Generic.List`1"/> at the specified index.</summary>
+            <typeparam name="T">The type of elements in the list.</typeparam>
+            <param name="list">The list into which the elements should be inserted.</param>
+            <param name="index">The zero-based index at which the new elements should be inserted.</param>
+            <param name="source">The span whose elements should be added to the <see cref="T:System.Collections.Generic.List`1"/>.</param>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="list"/> is null.</exception>
+            <exception cref="T:System.ArgumentOutOfRangeException"><paramref name="index"/> is less than 0 or greater than <paramref name="list"/>'s <see cref="P:System.Collections.Generic.List`1.Count"/>.</exception>
+        </member>
+        <member name="M:Polyfill.CopyTo``1(System.Collections.Generic.List{``0},System.Span{``0})">
+            <summary>Copies the entire <see cref="T:System.Collections.Generic.List`1"/> to a span.</summary>
+            <typeparam name="T">The type of elements in the list.</typeparam>
+            <param name="list">The list from which the elements are copied.</param>
+            <param name="destination">The span that is the destination of the elements copied from <paramref name="list"/>.</param>
+            <exception cref="T:System.ArgumentNullException">The <paramref name="list"/> is null.</exception>
+            <exception cref="T:System.ArgumentException">The number of elements in the source <see cref="T:System.Collections.Generic.List`1"/> is greater than the number of elements that the destination span can contain.</exception>
+        </member>
+        <member name="M:Polyfill.Nanoseconds(System.TimeSpan)">
+            <summary>
+            Gets the nanosecond component of the time represented by the current <see cref="T:System.TimeSpan"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Nanosecond(System.DateTime)">
+            <summary>
+            Gets the nanosecond component of the time represented by the current <see cref="T:System.DateTime"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Nanosecond(System.DateTimeOffset)">
+            <summary>
+            Gets the nanosecond component of the time represented by the current <see cref="T:System.DateTimeOffset"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Microseconds(System.TimeSpan)">
+            <summary>
+            Gets the microsecond component of the time represented by the current <see cref="T:System.TimeSpan"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Microsecond(System.DateTime)">
+            <summary>
+            Gets the microsecond component of the time represented by the current <see cref="T:System.DateTime"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Microsecond(System.DateTimeOffset)">
+            <summary>
+            Gets the microsecond component of the time represented by the current <see cref="T:System.DateTimeOffset"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.AddMicroseconds(System.DateTime,System.Double)">
+            <summary>
+            Returns a new <see cref="T:System.DateTime"/> object that adds a specified number of microseconds to the value of this instance..
+            </summary>
+        </member>
+        <member name="M:Polyfill.AddMicroseconds(System.DateTimeOffset,System.Double)">
+            <summary>
+            Returns a new <see cref="T:System.DateTimeOffset"/> object that adds a specified number of microseconds to the value of this instance..
+            </summary>
+        </member>
+        <member name="M:Polyfill.GetKeyAtIndex``2(System.Collections.Generic.SortedList{``0,``1},System.Int32)">
+            <summary>
+            Gets the key corresponding to the specified index.
+            </summary>
+            <param name="index">The zero-based index of the key within the entire <see cref="T:System.Collections.Generic.SortedList`2"/>.</param>
+            <returns>The key corresponding to the specified index.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">The specified index is out of range.</exception>
+        </member>
+        <member name="M:Polyfill.GetValueAtIndex``2(System.Collections.Generic.SortedList{``0,``1},System.Int32)">
+            <summary>
+            Gets the value corresponding to the specified index.
+            </summary>
+            <param name="index">The zero-based index of the value within the entire <see cref="T:System.Collections.Generic.SortedList`2"/>.</param>
+            <returns>The value corresponding to the specified index.</returns>
+        </member>
+        <member name="M:Polyfill.Append(System.Text.StringBuilder,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string to this instance.</summary>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.Append(System.Text.StringBuilder,System.IFormatProvider,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string to this instance.</summary>
+            <param name="provider">An object that supplies culture-specific formatting information.</param>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.AppendLine(System.Text.StringBuilder,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string followed by the default line terminator to the end of the current StringBuilder object.</summary>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.AppendLine(System.Text.StringBuilder,System.IFormatProvider,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string followed by the default line terminator to the end of the current StringBuilder object.</summary>
+            <param name="provider">An object that supplies culture-specific formatting information.</param>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.Replace(System.Text.StringBuilder,System.ReadOnlySpan{System.Char},System.ReadOnlySpan{System.Char})">
+            <summary>
+            Replaces all instances of one string with another in part of this builder.
+            </summary>
+            <param name="oldValue">The string to replace.</param>
+            <param name="newValue">The string to replace <paramref name="oldValue"/> with.</param>
+            <param name="startIndex">The index to start in this builder.</param>
+            <param name="count">The number of characters to read in this builder.</param>
+            <remarks>
+            If <paramref name="newValue"/> is <c>null</c>, instances of <paramref name="oldValue"/> are removed from this builder.
+            </remarks>
+        </member>
+        <member name="M:Polyfill.Replace(System.Text.StringBuilder,System.ReadOnlySpan{System.Char},System.ReadOnlySpan{System.Char},System.Int32,System.Int32)">
+            <summary>
+            Replaces all instances of one read-only character span with another in part of this builder.
+            </summary>
+            <param name="oldValue">The read-only character span to replace.</param>
+            <param name="newValue">The read-only character span to replace <paramref name="oldValue"/> with.</param>
+            <param name="startIndex">The index to start in this builder.</param>
+            <param name="count">The number of characters to read in this builder.</param>
+            <remarks>
+            If <paramref name="newValue"/> is empty, instances of <paramref name="oldValue"/> are removed from this builder.
+            </remarks>
+        </member>
+        <member name="M:Polyfill.ReadToEndAsync(System.IO.TextReader,System.Threading.CancellationToken)">
+            <summary>
+            Reads all characters from the current position to the end of the stream asynchronously and returns them as one string.
+            </summary>
+            <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+            <returns>A task that represents the asynchronous read operation. The value of the <c>TResult</c> parameter contains
+            a string with the characters from the current position to the end of the stream.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">The number of characters is larger than <see cref="F:System.Int32.MaxValue"/>.</exception>
+            <exception cref="T:System.ObjectDisposedException">The stream reader has been disposed.</exception>
+            <exception cref="T:System.InvalidOperationException">The reader is currently in use by a previous read operation.</exception>
+        </member>
+        <member name="M:Polyfill.ReadLineAsync(System.IO.TextReader,System.Threading.CancellationToken)">
+            <summary>
+            Reads a line of characters asynchronously and returns the data as a string.
+            </summary>
+            <param name="cancellationToken">The token to monitor for cancellation requests.</param>
+            <returns>A value task that represents the asynchronous read operation. The value of the <c>TResult</c>
+            parameter contains the next line from the text reader, or is <see langword="null" /> if all of the characters have been read.</returns>
+            <exception cref="T:System.ArgumentOutOfRangeException">The number of characters in the next line is larger than <see cref="F:System.Int32.MaxValue"/>.</exception>
+            <exception cref="T:System.ObjectDisposedException">The text reader has been disposed.</exception>
+            <exception cref="T:System.InvalidOperationException">The reader is currently in use by a previous read operation.</exception>
+        </member>
+        <member name="M:Polyfill.TryFormat(System.DateTimeOffset,System.Span{System.Char},System.Int32@,System.ReadOnlySpan{System.Char},System.IFormatProvider)">
+            <summary>
+            Tries to format the value of the current instance into the provided span of characters.
+            </summary>
+        </member>
+        <member name="M:Polyfill.TryFormat(System.DateTime,System.Span{System.Char},System.Int32@,System.ReadOnlySpan{System.Char},System.IFormatProvider)">
+            <summary>
+            Tries to format the value of the current instance into the provided span of characters.
+            </summary>
+        </member>
+        <member name="M:Polyfill.TryFormat(System.DateOnly,System.Span{System.Char},System.Int32@,System.ReadOnlySpan{System.Char},System.IFormatProvider)">
+            <summary>
+            Tries to format the value of the current instance into the provided span of characters.
+            </summary>
+        </member>
+        <member name="M:Polyfill.TryFormat(System.TimeOnly,System.Span{System.Char},System.Int32@,System.ReadOnlySpan{System.Char},System.IFormatProvider)">
+            <summary>
+            Tries to format the value of the current instance into the provided span of characters.
+            </summary>
+        </member>
+        <member name="M:Polyfill.IsGenericMethodParameter(System.Type)">
+            <summary>
+            Gets a value that indicates whether the current Type represents a type parameter in the definition of a generic method.
+            </summary>
+        </member>
+        <member name="M:Polyfill.IsAssignableTo``1(System.Type)">
+            <summary>
+            Generic version of Type.IsAssignableTo https://learn.microsoft.com/en-us/dotnet/api/system.type.isassignableto.
+            </summary>
+        </member>
+        <member name="M:Polyfill.IsAssignableFrom``1(System.Type)">
+            <summary>
+            Generic version of Type.IsAssignableFrom https://learn.microsoft.com/en-us/dotnet/api/system.type.isassignablefrom.
+            </summary>
+        </member>
+        <member name="M:Polyfill.IsMatch(System.Text.RegularExpressions.Regex,System.ReadOnlySpan{System.Char},System.Int32)">
+            <summary>
+            Indicates whether the regular expression specified in the Regex constructor finds a match in a specified input span.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:Polyfill.IsMatch(System.Text.RegularExpressions.Regex,System.ReadOnlySpan{System.Char})">
+            <summary>
+            Indicates whether the regular expression specified in the Regex constructor finds a match in a specified input span.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:Polyfill.EnumerateMatches(System.Text.RegularExpressions.Regex,System.ReadOnlySpan{System.Char})">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:Polyfill.EnumerateMatches(System.Text.RegularExpressions.Regex,System.ReadOnlySpan{System.Char},System.Int32)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:RegexPolyfill.IsMatch(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan)">
+            <summary>
+            Indicates whether the specified regular expression finds a match in the specified input span, using the specified matching options and time-out interval.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:RegexPolyfill.IsMatch(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions)">
+            <summary>
+            Indicates whether the specified regular expression finds a match in the specified input span, using the specified matching options.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:RegexPolyfill.IsMatch(System.ReadOnlySpan{System.Char},System.String)">
+            <summary>
+            Indicates whether the specified regular expression finds a match in the specified input span.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:RegexPolyfill.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:RegexPolyfill.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:RegexPolyfill.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:StringPolyfill.Join(System.Char,System.String[])">
+            <summary>
+            Concatenates an array of strings, using the specified separator between each member.
+            </summary>
+        </member>
+        <member name="M:StringPolyfill.Join(System.Char,System.Object[])">
+            <summary>
+            Concatenates the string representations of an array of objects, using the specified separator between each member.
+            </summary>
+        </member>
+        <member name="M:StringPolyfill.Join(System.Char,System.String[],System.Int32,System.Int32)">
+            <summary>
+            Concatenates the specified elements of a string array, using the specified separator between each element.
+            </summary>
+        </member>
+        <member name="M:StringPolyfill.Join``1(System.Char,System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            Concatenates the specified elements of a string array, using the specified separator between each element.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Testing.Extensions.TrxReport.Abstractions.ITrxReportCapability">
+            <summary>
+            This capability is used to indicate whether or not the test framework supports trx report generation.
+            By supporting trx generation, the test adapter should ensure that some required properties are available
+            for all the nodes.
+            We expect these properties in the node bag:
+            - 1 <c>trxreport.classname</c>
+            - 0..n <c>trxreport.testcategory</c>
+            And, in case of exception, the following extra properties:
+            - <c>trxreport.exceptionmessage</c>
+            - <c>trxreport.exceptionstacktrace</c>.
+            </summary>
+        </member>
+        <member name="P:Microsoft.Testing.Extensions.TrxReport.Abstractions.ITrxReportCapability.IsSupported">
+            <summary>
+            Gets a value indicating whether indicates if the test framework supports trx report properties enrichment.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Testing.Extensions.TrxReport.Abstractions.ITrxReportCapability.Enable">
+            <summary>
+            Notifies the test framework that the trx report is enabled and trx report properties should be added to the test nodes.
+            </summary>
+        </member>
+    </members>
+</doc>
