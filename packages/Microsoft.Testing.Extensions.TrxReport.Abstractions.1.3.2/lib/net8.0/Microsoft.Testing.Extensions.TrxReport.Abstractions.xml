@@ -1,0 +1,602 @@
+<?xml version="1.0"?>
+<doc>
+    <assembly>
+        <name>Microsoft.Testing.Extensions.TrxReport.Abstractions</name>
+    </assembly>
+    <members>
+        <member name="M:EnumPolyfill.GetValues``1">
+            <summary>
+            Retrieves an array of the values of the constants in a specified enumeration type.
+            </summary>
+            <returns>An array that contains the values of the constants in TEnum.</returns>
+        </member>
+        <member name="M:EnumPolyfill.GetNames``1">
+            <summary>
+            Retrieves an array of the names of the constants in a specified enumeration type.
+            </summary>
+            <returns>A string array of the names of the constants in TEnum.</returns>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.String)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.String,System.Boolean)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.ReadOnlySpan{System.Char})">
+            <summary>
+            Converts the span of characters representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.Parse``1(System.ReadOnlySpan{System.Char},System.Boolean)">
+            <summary>
+            Converts the span of characters representation of the name or numeric value of one or more enumerated constants specified by TEnum to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.TryParse``1(System.ReadOnlySpan{System.Char},``0@)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants to an equivalent enumerated object.
+            </summary>
+        </member>
+        <member name="M:EnumPolyfill.TryParse``1(System.ReadOnlySpan{System.Char},System.Boolean,``0@)">
+            <summary>
+            Converts the string representation of the name or numeric value of one or more enumerated constants to an equivalent enumerated object. A parameter specifies whether the operation is case-sensitive. The return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:GuidPolyfill.TryParse(System.String,System.IFormatProvider,System.Guid@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:GuidPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.String,System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Byte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its byte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Byte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Byte@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its byte equivalent.
+            </summary>
+        </member>
+        <member name="M:BytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Byte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its byte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.String,System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Double@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its double-precision floating-point number equivalent. A return value indicates whether the conversion succeeded or failed.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Double@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Double@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its double-precision floating-point number equivalent..
+            </summary>
+        </member>
+        <member name="M:DoublePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Double@)">
+            <summary>
+            Converts the string representation of a number in a specified style and culture-specific format to its double-precision floating-point number equivalent. A return value indicates whether the conversion succeeded or failed.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.String,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 32-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Int32@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its 32-bit signed integer equivalent.
+            </summary>
+        </member>
+        <member name="M:IntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 32-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.String,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 32-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Int32@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its 64-bit signed integer equivalent.
+            </summary>
+        </member>
+        <member name="M:LongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Int32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its 64-bit signed integer equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.String,System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.SByte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its sbyte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.SByte@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.SByte@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its sbyte equivalent.
+            </summary>
+        </member>
+        <member name="M:SBytePolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.SByte@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its sbyte equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.String,System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Int16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its short equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.Int16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Int16@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its short equivalent.
+            </summary>
+        </member>
+        <member name="M:ShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.Int16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its short equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.String,System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.UInt32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its uint equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.UInt32@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its uint equivalent.
+            </summary>
+        </member>
+        <member name="M:UIntPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt32@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its uint equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.String,System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.UInt64@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ulong equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.UInt64@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its ulong equivalent.
+            </summary>
+        </member>
+        <member name="M:ULongPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt64@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ulong equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.String,System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a string into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.UInt16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ushort equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a span of characters into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Tries to parse a span of UTF-8 characters into a value.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Byte},System.UInt16@)">
+            <summary>
+            Tries to convert a UTF-8 character span containing the string representation of a number to its ushort equivalent.
+            </summary>
+        </member>
+        <member name="M:UShortPolyfill.TryParse(System.ReadOnlySpan{System.Char},System.Globalization.NumberStyles,System.IFormatProvider,System.UInt16@)">
+            <summary>
+            Converts the span representation of a number in a specified style and culture-specific format to its ushort equivalent. A return value indicates whether the conversion succeeded.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Index``1(System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.AggregateBy``3(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1},``2,System.Func{``2,``0,``2},System.Collections.Generic.IEqualityComparer{``1})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.AggregateBy``3(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1},System.Func{``1,``2},System.Func{``2,``0,``2},System.Collections.Generic.IEqualityComparer{``1})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.CountBy``2(System.Collections.Generic.IEnumerable{``0},System.Func{``0,``1},System.Collections.Generic.IEqualityComparer{``1})">
+            <summary>
+            https://learn.microsoft.com/en-us/dotnet/core/whats-new/dotnet-9/overview#linq
+            </summary>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},``0)">
+            <summary>
+            Produces a set items excluding <paramref name="item"/> by using the default equality comparer to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},``0[])">
+            <summary>
+            Produces the set difference of two sequences by using the default equality comparer to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},``0,System.Collections.Generic.IEqualityComparer{``0})">
+            <summary>
+            Produces a set items excluding <paramref name="item"/> by using <paramref name="comparer"/> to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <param name="comparer">An <see cref="T:System.Collections.Generic.IEqualityComparer`1"/> to compare values.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Except``1(System.Collections.Generic.IEnumerable{``0},System.Collections.Generic.IEqualityComparer{``0},``0[])">
+            <summary>
+            Produces the set difference of two sequences by <paramref name="comparer"/> to compare values.
+            </summary>
+            <param name="target">An <see cref="T:System.Collections.Generic.IEnumerable`1"/> whose elements that are not equal to <paramref name="item"/> will be returned.</param>
+            <param name="item">An <see cref="!:TSource"/> that is elements equal it will cause those elements to be removed from the returned sequence.</param>
+            <typeparam name="TSource">The type of the elements of <paramref name="target" />.</typeparam>
+            <returns>A sequence that contains the items of <paramref name="target"/> but excluding <paramref name="item"/>.</returns>
+        </member>
+        <member name="M:Polyfill.Nanoseconds(System.TimeSpan)">
+            <summary>
+            Gets the nanosecond component of the time represented by the current <see cref="T:System.TimeSpan"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Nanosecond(System.DateTime)">
+            <summary>
+            Gets the nanosecond component of the time represented by the current <see cref="T:System.DateTime"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Nanosecond(System.DateTimeOffset)">
+            <summary>
+            Gets the nanosecond component of the time represented by the current <see cref="T:System.DateTimeOffset"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Microseconds(System.TimeSpan)">
+            <summary>
+            Gets the microsecond component of the time represented by the current <see cref="T:System.TimeSpan"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Microsecond(System.DateTime)">
+            <summary>
+            Gets the microsecond component of the time represented by the current <see cref="T:System.DateTime"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Microsecond(System.DateTimeOffset)">
+            <summary>
+            Gets the microsecond component of the time represented by the current <see cref="T:System.DateTimeOffset"/> object.
+            </summary>
+        </member>
+        <member name="M:Polyfill.Append(System.Text.StringBuilder,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string to this instance.</summary>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.Append(System.Text.StringBuilder,System.IFormatProvider,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string to this instance.</summary>
+            <param name="provider">An object that supplies culture-specific formatting information.</param>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.AppendLine(System.Text.StringBuilder,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string followed by the default line terminator to the end of the current StringBuilder object.</summary>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.AppendLine(System.Text.StringBuilder,System.IFormatProvider,System.Text.StringBuilder.AppendInterpolatedStringHandler@)">
+            <summary>Appends the specified interpolated string followed by the default line terminator to the end of the current StringBuilder object.</summary>
+            <param name="provider">An object that supplies culture-specific formatting information.</param>
+            <param name="handler">The interpolated string to append.</param>
+            <returns>A reference to this instance after the append operation has completed.</returns>
+        </member>
+        <member name="M:Polyfill.Replace(System.Text.StringBuilder,System.ReadOnlySpan{System.Char},System.ReadOnlySpan{System.Char})">
+            <summary>
+            Replaces all instances of one string with another in part of this builder.
+            </summary>
+            <param name="oldValue">The string to replace.</param>
+            <param name="newValue">The string to replace <paramref name="oldValue"/> with.</param>
+            <param name="startIndex">The index to start in this builder.</param>
+            <param name="count">The number of characters to read in this builder.</param>
+            <remarks>
+            If <paramref name="newValue"/> is <c>null</c>, instances of <paramref name="oldValue"/> are removed from this builder.
+            </remarks>
+        </member>
+        <member name="M:Polyfill.Replace(System.Text.StringBuilder,System.ReadOnlySpan{System.Char},System.ReadOnlySpan{System.Char},System.Int32,System.Int32)">
+            <summary>
+            Replaces all instances of one read-only character span with another in part of this builder.
+            </summary>
+            <param name="oldValue">The read-only character span to replace.</param>
+            <param name="newValue">The read-only character span to replace <paramref name="oldValue"/> with.</param>
+            <param name="startIndex">The index to start in this builder.</param>
+            <param name="count">The number of characters to read in this builder.</param>
+            <remarks>
+            If <paramref name="newValue"/> is empty, instances of <paramref name="oldValue"/> are removed from this builder.
+            </remarks>
+        </member>
+        <member name="M:Polyfill.IsGenericMethodParameter(System.Type)">
+            <summary>
+            Gets a value that indicates whether the current Type represents a type parameter in the definition of a generic method.
+            </summary>
+        </member>
+        <member name="M:Polyfill.IsAssignableTo``1(System.Type)">
+            <summary>
+            Generic version of Type.IsAssignableTo https://learn.microsoft.com/en-us/dotnet/api/system.type.isassignableto.
+            </summary>
+        </member>
+        <member name="M:Polyfill.IsAssignableFrom``1(System.Type)">
+            <summary>
+            Generic version of Type.IsAssignableFrom https://learn.microsoft.com/en-us/dotnet/api/system.type.isassignablefrom.
+            </summary>
+        </member>
+        <member name="M:RegexPolyfill.IsMatch(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan)">
+            <summary>
+            Indicates whether the specified regular expression finds a match in the specified input span, using the specified matching options and time-out interval.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:RegexPolyfill.IsMatch(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions)">
+            <summary>
+            Indicates whether the specified regular expression finds a match in the specified input span, using the specified matching options.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:RegexPolyfill.IsMatch(System.ReadOnlySpan{System.Char},System.String)">
+            <summary>
+            Indicates whether the specified regular expression finds a match in the specified input span.
+            </summary>
+            <returns>true if the regular expression finds a match; otherwise, false.</returns>
+        </member>
+        <member name="M:RegexPolyfill.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:RegexPolyfill.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions,System.TimeSpan)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:RegexPolyfill.EnumerateMatches(System.ReadOnlySpan{System.Char},System.String,System.Text.RegularExpressions.RegexOptions)">
+            <summary>
+            Searches an input span for all occurrences of a regular expression and returns a Regex.ValueMatchEnumerator to iterate over the matches.
+            </summary>
+            <returns>A Regex.ValueMatchEnumerator to iterate over the matches.</returns>
+        </member>
+        <member name="M:StringPolyfill.Join(System.Char,System.String[])">
+            <summary>
+            Concatenates an array of strings, using the specified separator between each member.
+            </summary>
+        </member>
+        <member name="M:StringPolyfill.Join(System.Char,System.Object[])">
+            <summary>
+            Concatenates the string representations of an array of objects, using the specified separator between each member.
+            </summary>
+        </member>
+        <member name="M:StringPolyfill.Join(System.Char,System.String[],System.Int32,System.Int32)">
+            <summary>
+            Concatenates the specified elements of a string array, using the specified separator between each element.
+            </summary>
+        </member>
+        <member name="M:StringPolyfill.Join``1(System.Char,System.Collections.Generic.IEnumerable{``0})">
+            <summary>
+            Concatenates the specified elements of a string array, using the specified separator between each element.
+            </summary>
+        </member>
+        <member name="T:Microsoft.Testing.Extensions.TrxReport.Abstractions.ITrxReportCapability">
+            <summary>
+            This capability is used to indicate whether or not the test framework supports trx report generation.
+            By supporting trx generation, the test adapter should ensure that some required properties are available
+            for all the nodes.
+            We expect these properties in the node bag:
+            - 1 <c>trxreport.classname</c>
+            - 0..n <c>trxreport.testcategory</c>
+            And, in case of exception, the following extra properties:
+            - <c>trxreport.exceptionmessage</c>
+            - <c>trxreport.exceptionstacktrace</c>.
+            </summary>
+        </member>
+        <member name="P:Microsoft.Testing.Extensions.TrxReport.Abstractions.ITrxReportCapability.IsSupported">
+            <summary>
+            Gets a value indicating whether indicates if the test framework supports trx report properties enrichment.
+            </summary>
+        </member>
+        <member name="M:Microsoft.Testing.Extensions.TrxReport.Abstractions.ITrxReportCapability.Enable">
+            <summary>
+            Notifies the test framework that the trx report is enabled and trx report properties should be added to the test nodes.
+            </summary>
+        </member>
+    </members>
+</doc>

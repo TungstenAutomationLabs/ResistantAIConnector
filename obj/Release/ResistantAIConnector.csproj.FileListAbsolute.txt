@@ -1,0 +1,7 @@
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\bin\Release\tungstenlabs.integration.resistantai.dll.config
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\bin\Release\tungstenlabs.integration.resistantai.dll
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\bin\Release\tungstenlabs.integration.resistantai.pdb
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Release\ResistantAIConnector.csproj.AssemblyReference.cache
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Release\ResistantAIConnector.csproj.CoreCompileInputs.cache
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Release\tungstenlabs.integration.resistantai.dll
+C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Release\tungstenlabs.integration.resistantai.pdb
