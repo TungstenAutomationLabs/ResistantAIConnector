@@ -1,0 +1,256 @@
+{
+	"info": {
+		"_postman_id": "aaca9dbd-ee30-4da9-a56a-3747655ab467",
+		"name": "Document Analysis",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+		"_exporter_id": "25625769",
+		"_collection_link": "https://tungsten-labs.postman.co/workspace/Resistant-AI~69e0765a-c4a1-422b-ade9-010c832bb82c/collection/37834661-aaca9dbd-ee30-4da9-a56a-3747655ab467?action=share&source=collection_link&creator=25625769"
+	},
+	"item": [
+		{
+			"name": "Authenticate",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();\r",
+							"pm.environment.set(\"ACCESS_TOKEN\", jsonData.access_token);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"auth": {
+					"type": "basic",
+					"basic": [
+						{
+							"key": "password",
+							"value": "{{CLIENT_SECRET}}",
+							"type": "string"
+						},
+						{
+							"key": "username",
+							"value": "{{CLIENT_ID}}",
+							"type": "string"
+						}
+					]
+				},
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/x-www-form-urlencoded",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "urlencoded",
+					"urlencoded": [
+						{
+							"key": "grant_type",
+							"value": "client_credentials",
+							"type": "text"
+						},
+						{
+							"key": "scope",
+							"value": "submissions.read submissions.write",
+							"type": "text"
+						}
+					]
+				},
+				"url": {
+					"raw": "{{TOKEN_URL}}",
+					"host": [
+						"{{TOKEN_URL}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Create Submission",
+			"event": [
+				{
+					"listen": "test",
+					"script": {
+						"exec": [
+							"var jsonData = pm.response.json();\r",
+							"pm.environment.set(\"UPLOAD_URL\", jsonData.upload_url);\r",
+							"pm.environment.set(\"SUBMISSION_ID\", jsonData.submission_id);\r",
+							"pm.environment.set(\"VIEWER_URL\", \"https://demo-kofax.documents.resistant.ai/ui/analysis/\"+jsonData.submission_id);"
+						],
+						"type": "text/javascript",
+						"packages": {}
+					}
+				}
+			],
+			"request": {
+				"method": "POST",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "raw",
+					"raw": "{\r\n  \"query_id\": \"TUNGSTEN\",\r\n  \"pipeline_configuration\": \"FRAUD_ONLY\",\r\n  \"enable_decision\": false,\r\n  \"enable_submission_characteristics\": false\r\n}",
+					"options": {
+						"raw": {
+							"language": "json"
+						}
+					}
+				},
+				"url": {
+					"raw": "{{API_URL}}",
+					"host": [
+						"{{API_URL}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Upload Document",
+			"request": {
+				"auth": {
+					"type": "noauth"
+				},
+				"method": "PUT",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/octet-stream",
+						"type": "text"
+					}
+				],
+				"body": {
+					"mode": "file",
+					"file": {
+						"src": "/C:/Users/joseph.joy/OneDrive - Tungsten Automation, Corp/Projects/Resistant AI/Samples/Forged/US Dept of Treasury - Interim Stop Order.pdf"
+					}
+				},
+				"url": {
+					"raw": "{{UPLOAD_URL}}",
+					"host": [
+						"{{UPLOAD_URL}}"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Fraud Result",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{API_URL}}/{{SUBMISSION_ID}}/fraud",
+					"host": [
+						"{{API_URL}}"
+					],
+					"path": [
+						"{{SUBMISSION_ID}}",
+						"fraud"
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Get Fraud Result (Metadata)",
+			"request": {
+				"method": "GET",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{API_URL}}/{{SUBMISSION_ID}}/fraud?with_metadata=true ",
+					"host": [
+						"{{API_URL}}"
+					],
+					"path": [
+						"{{SUBMISSION_ID}}",
+						"fraud"
+					],
+					"query": [
+						{
+							"key": "with_metadata",
+							"value": "true "
+						}
+					]
+				}
+			},
+			"response": []
+		},
+		{
+			"name": "Delete data",
+			"request": {
+				"method": "DELETE",
+				"header": [
+					{
+						"key": "Content-Type",
+						"value": "application/json",
+						"type": "text"
+					}
+				],
+				"url": {
+					"raw": "{{API_URL}}/{{SUBMISSION_ID}}",
+					"host": [
+						"{{API_URL}}"
+					],
+					"path": [
+						"{{SUBMISSION_ID}}"
+					]
+				}
+			},
+			"response": []
+		}
+	],
+	"auth": {
+		"type": "bearer",
+		"bearer": [
+			{
+				"key": "token",
+				"value": "{{ACCESS_TOKEN}}",
+				"type": "string"
+			}
+		]
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		},
+		{
+			"listen": "test",
+			"script": {
+				"type": "text/javascript",
+				"packages": {},
+				"exec": [
+					""
+				]
+			}
+		}
+	]
+}
