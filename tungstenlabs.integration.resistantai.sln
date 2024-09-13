@@ -3,9 +3,9 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.10.35013.160
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResistantAIConnector", "ResistantAIConnector.csproj", "{FF2D021B-7F9F-432C-B14F-D0A62A0068E0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tungstenlabs.integration.resistantai", "tungstenlabs.integration.resistantai\tungstenlabs.integration.resistantai.csproj", "{FF2D021B-7F9F-432C-B14F-D0A62A0068E0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RAIV2UnitTest", "..\RAIV2UnitTest\RAIV2UnitTest.csproj", "{49AE02ED-DA1C-46BF-9EAD-820CA95A66A7}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tungstenlabs.integration.resistantai.tests", "..\tungstenlabs.integration.resistantai.unittests\tungstenlabs.integration.resistantai.tests.csproj", "{5FD55887-81F6-41B0-AAED-FBB8AAF7C5FD}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -17,10 +17,10 @@ Global
 		{FF2D021B-7F9F-432C-B14F-D0A62A0068E0}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{FF2D021B-7F9F-432C-B14F-D0A62A0068E0}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{FF2D021B-7F9F-432C-B14F-D0A62A0068E0}.Release|Any CPU.Build.0 = Release|Any CPU
-		{49AE02ED-DA1C-46BF-9EAD-820CA95A66A7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{49AE02ED-DA1C-46BF-9EAD-820CA95A66A7}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{49AE02ED-DA1C-46BF-9EAD-820CA95A66A7}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{49AE02ED-DA1C-46BF-9EAD-820CA95A66A7}.Release|Any CPU.Build.0 = Release|Any CPU
+		{5FD55887-81F6-41B0-AAED-FBB8AAF7C5FD}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{5FD55887-81F6-41B0-AAED-FBB8AAF7C5FD}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{5FD55887-81F6-41B0-AAED-FBB8AAF7C5FD}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{5FD55887-81F6-41B0-AAED-FBB8AAF7C5FD}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
