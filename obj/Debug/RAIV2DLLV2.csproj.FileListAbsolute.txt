@@ -1,7 +1,0 @@
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Debug\RAIV2DLLV2.csproj.AssemblyReference.cache
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Debug\RAIV2DLLV2.csproj.CoreCompileInputs.cache
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\bin\Debug\RAIV2DLLV2.dll.config
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\bin\Debug\RAIV2DLLV2.dll
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\bin\Debug\RAIV2DLLV2.pdb
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Debug\RAIV2DLLV2.dll
-C:\Users\rafael.castro\OneDrive - Kofax, Inc\Documents\Projects\ResistantAIConnector\obj\Debug\RAIV2DLLV2.pdb

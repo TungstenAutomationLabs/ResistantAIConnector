@@ -1,5 +1,0 @@
-C:\Users\Syed.Ahmed\source\repos\RAIV2DLL\bin\Release\RAIV2DLL.dll
-C:\Users\Syed.Ahmed\source\repos\RAIV2DLL\bin\Release\RAIV2DLL.pdb
-C:\Users\Syed.Ahmed\source\repos\RAIV2DLL\obj\Release\RAIV2DLL.dll
-C:\Users\Syed.Ahmed\source\repos\RAIV2DLL\obj\Release\RAIV2DLL.pdb
-C:\Users\Syed.Ahmed\source\repos\RAIV2DLL\obj\Release\RAIV2DLL.csprojAssemblyReference.cache
