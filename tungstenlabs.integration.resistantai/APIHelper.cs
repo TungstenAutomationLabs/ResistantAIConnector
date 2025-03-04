@@ -316,7 +316,7 @@ namespace tungstenlabs.integration.resistantai
             HttpWebRequest httpWebRequest;
             HttpWebResponse httpWebResponse;
             string text = "";
-            string requrl = SubmissionURL + "/" + SubmissionID + "/fraud";
+            string requrl = SubmissionURL + "/" + SubmissionID + "/fraud?with_metadata=true";
             int counter = 0;
             int max = 15;
             int delay = 4000;
