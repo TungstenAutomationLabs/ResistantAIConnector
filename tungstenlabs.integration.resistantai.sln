@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tungstenlabs.integration.re
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "tungstenlabs.integration.resistantai.tests", "tungstenlabs.integration.resistantai.tests\tungstenlabs.integration.resistantai.tests.csproj", "{7D8F3C57-AEFA-4F67-90C4-D51F1010F096}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "ResistantaiMetadataTester", "ResistantaiMetadataTester\ResistantaiMetadataTester.csproj", "{BD4BB6F9-4BCD-4A61-8F0E-F35E200764E5}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{7D8F3C57-AEFA-4F67-90C4-D51F1010F096}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{7D8F3C57-AEFA-4F67-90C4-D51F1010F096}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{7D8F3C57-AEFA-4F67-90C4-D51F1010F096}.Release|Any CPU.Build.0 = Release|Any CPU
+		{BD4BB6F9-4BCD-4A61-8F0E-F35E200764E5}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{BD4BB6F9-4BCD-4A61-8F0E-F35E200764E5}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{BD4BB6F9-4BCD-4A61-8F0E-F35E200764E5}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{BD4BB6F9-4BCD-4A61-8F0E-F35E200764E5}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
