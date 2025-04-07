@@ -15,6 +15,7 @@ using System.Windows.Media;
 using System.Xml.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
+using Color = System.Drawing.Color;
 
 namespace tungstenlabs.integration.resistantai
 {
@@ -240,7 +241,7 @@ namespace tungstenlabs.integration.resistantai
                     Bitmap pageBitmap = new Bitmap(image); // Copy current page
                     using (Graphics g = Graphics.FromImage(pageBitmap))
                     {
-                        using (System.Drawing.Pen pen = new System.Drawing.Pen(System.Drawing.Color.Red, 3)) // Red bounding box
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(100, Color.Yellow))) // 100/255 transparency
                         {
                             foreach (var box in boundingBoxes)
                             {
@@ -254,7 +255,7 @@ namespace tungstenlabs.integration.resistantai
                                     float yImage = (float)((pdfHeight - box.Y - box.Height) * scaleY);
                                     float heightImage = (float)(box.Height * scaleY);
 
-                                    g.DrawRectangle(pen, xImage, yImage, widthImage, heightImage);
+                                    g.FillRectangle(brush, xImage, yImage, widthImage, heightImage);
                                 }
                             }
                         }

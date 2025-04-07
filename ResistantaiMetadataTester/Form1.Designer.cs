@@ -32,7 +32,7 @@
             this.btnNext = new System.Windows.Forms.Button();
             this.lblPageNumber = new System.Windows.Forms.Label();
             this.btnPrevious = new System.Windows.Forms.Button();
-            this.textBox1 = new System.Windows.Forms.TextBox();
+            this.txtDocID = new System.Windows.Forms.TextBox();
             ((System.ComponentModel.ISupportInitialize)(this.pictureBox1)).BeginInit();
             this.SuspendLayout();
             // 
@@ -74,19 +74,19 @@
             this.btnPrevious.UseVisualStyleBackColor = true;
             this.btnPrevious.Click += new System.EventHandler(this.btnPrevious_Click);
             // 
-            // textBox1
+            // txtDocID
             // 
-            this.textBox1.Location = new System.Drawing.Point(818, 473);
-            this.textBox1.Name = "textBox1";
-            this.textBox1.Size = new System.Drawing.Size(358, 22);
-            this.textBox1.TabIndex = 4;
+            this.txtDocID.Location = new System.Drawing.Point(818, 473);
+            this.txtDocID.Name = "txtDocID";
+            this.txtDocID.Size = new System.Drawing.Size(358, 22);
+            this.txtDocID.TabIndex = 4;
             // 
             // Form1
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(8F, 16F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(1214, 1054);
-            this.Controls.Add(this.textBox1);
+            this.Controls.Add(this.txtDocID);
             this.Controls.Add(this.btnPrevious);
             this.Controls.Add(this.lblPageNumber);
             this.Controls.Add(this.btnNext);
@@ -106,7 +106,7 @@
         private System.Windows.Forms.Button btnNext;
         private System.Windows.Forms.Label lblPageNumber;
         private System.Windows.Forms.Button btnPrevious;
-        private System.Windows.Forms.TextBox textBox1;
+        private System.Windows.Forms.TextBox txtDocID;
     }
 }
 
