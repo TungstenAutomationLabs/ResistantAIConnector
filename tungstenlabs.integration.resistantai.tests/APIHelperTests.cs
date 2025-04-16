@@ -12,7 +12,7 @@ namespace tungstenlabs.integration.resistantai.tests
         {
             string[] response = oRAI.UploadFileAndFetchResults(
                 Constants.RAI_URL_TOKEN, Constants.RAI_URL_API, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET,
-                @"", //document id
+                @"24a89003-fa7d-4239-9d88-b2a60145e0ab", //document id
                 Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID);
         }
     }
