@@ -338,8 +338,8 @@ namespace tungstenlabs.integration.resistantai
         {
             AuthToken = GetTokenFromTA(TASession, TASDKURL);
             DO_Submission objSubmission = new DO_Submission();
-//            try
-//            {   //calling authorization and submission API CAlls and get SubmissionID and UploadURl in return
+            try
+            {   //calling authorization and submission API CAlls and get SubmissionID and UploadURl in return
                 objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL);
                 byte[] FileArray = GetKTADocumentFile(DocID, TASDKURL, TASession);
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(objSubmission.upload_url);
@@ -363,15 +363,16 @@ namespace tungstenlabs.integration.resistantai
                 //Return ARray response = OK, OK, SubmissionID
                 string[] Returnarray = { httpWebResponse.StatusCode.ToString(), httpWebResponse.StatusDescription.ToString(), objSubmission.submission_id };
                 return Returnarray;
-//            }
-//            catch (Exception e)
-//            {
-//                string[] arrayError = { "ERROR", e.Message.ToString(), objSubmission.submission_id };
-//                return arrayError;
-//            }
+            }
+            catch (Exception e)
+            {
+                
+                string[] arrayError = { "ERROR", e.Message.ToString(), objSubmission.submission_id };
+                return arrayError;
+            }
         }
 
-        private string FetchResults(String SubmissionURL, string SubmissionID)
+        private string FetchResults(string SubmissionURL, string SubmissionID)
         {
             if (AuthToken.access_token == "")
             {
@@ -419,14 +420,16 @@ namespace tungstenlabs.integration.resistantai
             return text;
         }
 
-        public string[] UploadFileAndFetchResults(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String DocID, String TASDKURL, String TASession)
+        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, out string SuspendReason)
         {
+            SuspendReason = "";
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
             string SubmissionID = uploadresult[2];
 
-            if (statusCode.ToLower() == "error") throw new Exception("Upload not successful: " + statusCode + " - " + statusDesc + " - " + SubmissionID);
+            if (statusCode.ToLower() == "error") //throw new Exception("Upload not successful: " + statusCode + " - " + statusDesc + " - " + SubmissionID);
+                SuspendReason = "SUSPEND";
 
             string[] result = new string[2];
             result[0] = SubmissionID;
