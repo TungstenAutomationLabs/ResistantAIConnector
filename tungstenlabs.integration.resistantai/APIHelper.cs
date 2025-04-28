@@ -428,12 +428,21 @@ namespace tungstenlabs.integration.resistantai
             string statusDesc = uploadresult[1];
             string SubmissionID = uploadresult[2];
 
-            if (statusCode.ToLower() == "error") //throw new Exception("Upload not successful: " + statusCode + " - " + statusDesc + " - " + SubmissionID);
-                SuspendReason = "SUSPEND";
-
             string[] result = new string[2];
-            result[0] = SubmissionID;
-            result[1] = FetchResults(SubmissionURL, SubmissionID);
+
+            if (statusCode.ToLower() == "error")
+            {
+                //throw new Exception("Upload not successful: " + statusCode + " - " + statusDesc + " - " + SubmissionID);
+                SuspendReason = "SUSPEND";
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else 
+            {
+                SuspendReason = "";
+                result[0] = SubmissionID;
+                result[1] = FetchResults(SubmissionURL, SubmissionID);
+            }
 
             return result;
         }
