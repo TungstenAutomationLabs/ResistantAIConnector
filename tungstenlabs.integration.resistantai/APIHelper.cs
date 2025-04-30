@@ -3,10 +3,13 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 /*
  * tungstenlabs.integration.resistantai.ResistantAIConnector
@@ -367,9 +370,56 @@ namespace tungstenlabs.integration.resistantai
             catch (Exception e)
             {
                 
-                string[] arrayError = { "ERROR", e.Message.ToString(), objSubmission.submission_id };
+                string[] arrayError = { "ERROR", e.ToString(), objSubmission.submission_id };
                 return arrayError;
             }
+        }
+
+        private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId)
+        {
+            HttpClient httpClient = new HttpClient();
+
+            if (string.IsNullOrEmpty(AuthToken.access_token))
+                throw new Exception("Auth Token is empty!");
+
+            // set up authorization header once
+            httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+            var requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
+            string result = null;
+            int attempt = 0;
+            const int maxAttempts = 15;
+            int delayMs = 4000;
+
+            while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result))
+            {
+                try
+                {
+                    // async wait instead of Thread.Sleep
+                    await Task.Delay(delayMs).ConfigureAwait(false);
+
+                    var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode(); // throws on non-2xx
+
+                    result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex)
+                {
+                    if (attempt >= maxAttempts)
+                        throw new Exception($"Too many failures (attempt {attempt})", ex);
+                    // else swallow and retry
+                }
+
+                // linear back-off
+                delayMs += 1000 * attempt;
+                attempt++;
+            }
+
+            if (string.IsNullOrWhiteSpace(result))
+                throw new Exception("Could not get the results from ResistantAI API");
+
+            return result;
         }
 
         private string FetchResults(string SubmissionURL, string SubmissionID)
@@ -441,7 +491,8 @@ namespace tungstenlabs.integration.resistantai
             {
                 SuspendReason = "";
                 result[0] = SubmissionID;
-                result[1] = FetchResults(SubmissionURL, SubmissionID);
+                //result[1] = FetchResults(SubmissionURL, SubmissionID);
+                result[1] = FetchResultsAsync(SubmissionURL, SubmissionID).GetAwaiter().GetResult();
             }
 
             return result;
