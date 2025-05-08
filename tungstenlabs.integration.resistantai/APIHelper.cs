@@ -375,7 +375,7 @@ namespace tungstenlabs.integration.resistantai
             }
         }
 
-        private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId)
+        private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId, int maxAttempts)
         {
             HttpClient httpClient = new HttpClient();
 
@@ -389,7 +389,6 @@ namespace tungstenlabs.integration.resistantai
             var requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
             string result = null;
             int attempt = 0;
-            const int maxAttempts = 15;
             int delayMs = 4000;
 
             while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result))
@@ -470,7 +469,7 @@ namespace tungstenlabs.integration.resistantai
             return text;
         }
 
-        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, out string SuspendReason)
+        public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
         {
             SuspendReason = "";
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
@@ -493,14 +492,50 @@ namespace tungstenlabs.integration.resistantai
                     SuspendReason = "";
                     result[0] = SubmissionID;
                     //result[1] = FetchResults(SubmissionURL, SubmissionID);
-                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID).GetAwaiter().GetResult();
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries).GetAwaiter().GetResult();
                 }
                 catch (Exception e)
                 {
-                    SuspendReason = "Suspend";
+                    SuspendReason = "Suspended";
                     throw e;
                 }
                 
+            }
+
+            return result;
+        }
+
+        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, out string SuspendReason)
+        {
+            SuspendReason = "";
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
+            string statusCode = uploadresult[0];
+            string statusDesc = uploadresult[1];
+            string SubmissionID = uploadresult[2];
+
+            string[] result = new string[2];
+
+            if (statusCode.ToLower() == "error")
+            {
+                SuspendReason = "Suspended";
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else
+            {
+                try
+                {
+                    SuspendReason = "";
+                    result[0] = SubmissionID;
+                    //result[1] = FetchResults(SubmissionURL, SubmissionID);
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID,1).GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    SuspendReason = "Suspended";
+                    throw e;
+                }
+
             }
 
             return result;
