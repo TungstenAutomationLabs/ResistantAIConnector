@@ -505,9 +505,8 @@ namespace tungstenlabs.integration.resistantai
             return result;
         }
 
-        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, out string SuspendReason)
+        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession)
         {
-            SuspendReason = "";
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
@@ -517,7 +516,6 @@ namespace tungstenlabs.integration.resistantai
 
             if (statusCode.ToLower() == "error")
             {
-                SuspendReason = "Suspended";
                 result[0] = statusDesc;
                 result[1] = SubmissionID;
             }
@@ -525,14 +523,12 @@ namespace tungstenlabs.integration.resistantai
             {
                 try
                 {
-                    SuspendReason = "";
                     result[0] = SubmissionID;
                     //result[1] = FetchResults(SubmissionURL, SubmissionID);
                     result[1] = FetchResultsAsync(SubmissionURL, SubmissionID,1).GetAwaiter().GetResult();
                 }
                 catch (Exception e)
                 {
-                    SuspendReason = "Suspended";
                     throw e;
                 }
 
