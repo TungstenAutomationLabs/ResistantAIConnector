@@ -1,10 +1,15 @@
 ﻿using System;
+using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Net;
+using System.Net.Http.Headers;
+using System.Net.Http;
 using System.Runtime.Serialization;
 using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 
 /*
  * tungstenlabs.integration.resistantai.ResistantAIConnector
@@ -58,6 +63,7 @@ using System.Threading;
 
 namespace tungstenlabs.integration.resistantai
 {
+
     //authentication dataobject
     [DataContract]
     internal class DO_AuthCodeParamteres
@@ -87,9 +93,15 @@ namespace tungstenlabs.integration.resistantai
 
     public class ResistantAIConnector
     {
+        public const string RAI_URL_TOKEN = "RAI-URL-TOKEN";
+        public const string RAI_URL_API = "RAI-URL-API";
+        public const string RAI_CLIENT_ID = "RAI-CLIENT-ID";
+        public const string RAI_CLIENT_SECRET = "RAI-CLIENT-SECRET";
+        public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
+
         private DO_AuthCodeParamteres AuthToken { get; set; }
 
-        private DO_AuthCodeParamteres GetAuthToken(String URL, String ClientID, String ClientSecret)
+        private DO_AuthCodeParamteres RefreshAuthToken(String URL, String ClientID, String ClientSecret)
         {
             //Setting the URi and calling the get document API
             string credentials = string.Format("{0}:{1}", ClientID, ClientSecret);
@@ -132,47 +144,101 @@ namespace tungstenlabs.integration.resistantai
             return bsObj2;
         }
 
-        private DO_Submission Submission(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret)
+        private DO_AuthCodeParamteres GetTokenFromTA(string taSessionId, string taSdkUrl)
         {
-            //Setting the URi and calling the get document API
-            //DO_AuthCodeParamteres ReturnParamteres = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
-            AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
-            HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(SubmissionURL);
-            httpWebRequest.ContentType = "application/json";
-            httpWebRequest.Accept = "*/*";
-            httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, string.Format("Bearer {0}", AuthToken.access_token));
-            httpWebRequest.Method = "POST";
-            // CONSTRUCT JSON Payload
-            string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":false,\"enable_submission_characteristics\":false}";
+            List<string> vars = new List<string>() { RAI_CLIENT_TOKEN };
+            ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+            var sv = serverVariableHelper.GetServerVariables(taSessionId, taSdkUrl, vars);
 
-            // Convert the request body string to bytes
-            byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
-            // Set the ContentLength of the request
-            httpWebRequest.ContentLength = requestBodyBytes.Length;
-            // Write the request body to the request stream
-            using (var requestStream = httpWebRequest.GetRequestStream())
+            return new DO_AuthCodeParamteres() { access_token = sv[RAI_CLIENT_TOKEN].Value };
+        }
+
+        private DO_Submission Submission(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, string taSessionId, string taSdkUrl)
+        {
+            bool shouldRetry = false;
+            do
             {
-                requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
-                requestStream.Flush();
-            }
-            //Reading response from API
-            String responseText = String.Empty;
-            DO_Submission bsObj2;
-            HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-            var encoding = ASCIIEncoding.UTF8;
-            using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
-            {
-                responseText = reader.ReadToEnd();
-            }
-            //deserialize JSON string to its key value pairs
-            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
-            {
-                // Deserialization from JSON
-                DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_Submission));
-                bsObj2 = (DO_Submission)deserializer.ReadObject(ms);
-            }
-            //String[] ReturnParamteres = { bsObj2.access_token, bsObj2.expires_in, bsObj2.token_type, bsObj2.scope };
-            return bsObj2;
+                try 
+                {
+                    shouldRetry = false;
+                    //Setting the URi and calling the get document API
+                    //DO_AuthCodeParamteres ReturnParamteres = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
+                    //AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
+                    HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(SubmissionURL);
+                    httpWebRequest.ContentType = "application/json";
+                    httpWebRequest.Accept = "*/*";
+                    httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, string.Format("Bearer {0}", AuthToken.access_token));
+                    httpWebRequest.Method = "POST";
+                    // CONSTRUCT JSON Payload
+                    string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":false,\"enable_submission_characteristics\":false}";
+
+                    // Convert the request body string to bytes
+                    byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
+                    // Set the ContentLength of the request
+                    httpWebRequest.ContentLength = requestBodyBytes.Length;
+                    // Write the request body to the request stream
+                    using (var requestStream = httpWebRequest.GetRequestStream())
+                    {
+                        requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
+                        requestStream.Flush();
+                    }
+                    //Reading response from API
+                    String responseText = String.Empty;
+                    DO_Submission bsObj2;
+                    HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+                    var encoding = ASCIIEncoding.UTF8;
+                    using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
+                    {
+                        responseText = reader.ReadToEnd();
+                    }
+                    //deserialize JSON string to its key value pairs
+                    using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
+                    {
+                        // Deserialization from JSON
+                        DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_Submission));
+                        bsObj2 = (DO_Submission)deserializer.ReadObject(ms);
+                    }
+                    //String[] ReturnParamteres = { bsObj2.access_token, bsObj2.expires_in, bsObj2.token_type, bsObj2.scope };
+                    return bsObj2;
+                }
+                catch (WebException ex) when (ex.Status == WebExceptionStatus.ProtocolError && ex.Response is HttpWebResponse httpResponse)
+                {
+                    if ((httpResponse.StatusCode == HttpStatusCode.Unauthorized) || (httpResponse.StatusCode == HttpStatusCode.Forbidden))
+                    {
+                        shouldRetry = true;
+                        AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+                        List<string> vars = new List<string>() { RAI_CLIENT_TOKEN };
+
+                        ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                        var dict = serverVariableHelper.GetServerVariables(taSessionId, taSdkUrl, vars);
+                        dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+
+                        Dictionary<string, string> newDict = dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value);
+                        serverVariableHelper.UpdateServerVariables(newDict, taSessionId, taSdkUrl);
+                    }
+                    else
+                    {
+                        throw new WebException($"HTTP Error: {httpResponse.StatusCode}", ex);
+                    }
+                }
+                catch (WebException ex)
+                {
+                    string responseError = string.Empty;
+
+                    if (ex.Response is HttpWebResponse errorResponse)
+                    {
+                        using (var stream = errorResponse.GetResponseStream())
+                        using (var reader = new StreamReader(stream))
+                        {
+                            responseError = reader.ReadToEnd();
+                        }
+                    }
+
+                    throw new WebException($"An error occurred: {responseError}", ex);
+                }
+            } while (shouldRetry);
+
+            return null;
         }
 
         private DO_Submission UploadFile(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret)
@@ -225,8 +291,8 @@ namespace tungstenlabs.integration.resistantai
             //string fileType = "pdf";
             string status = "OK";
 
-            try
-            {
+ //           try
+ //           {
                 //Setting the URi and calling the get document API
                 var KTAGetDocumentFile = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetDocumentFile2";
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(KTAGetDocumentFile);
@@ -263,20 +329,21 @@ namespace tungstenlabs.integration.resistantai
                 }
 
                 return result;
-            }
-            catch (Exception ex)
-            {
-                status = "An error occured: " + ex.ToString();
-                return result;
-            }
+            //}
+            //catch (Exception ex)
+            //{
+            //    status = "An error occured: " + ex.ToString();
+            //    return result;
+            //}
         }
 
         private String[] UploadFiles(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String DocID, String TASDKURL, String TASession)
         {
+            AuthToken = GetTokenFromTA(TASession, TASDKURL);
             DO_Submission objSubmission = new DO_Submission();
             try
             {   //calling authorization and submission API CAlls and get SubmissionID and UploadURl in return
-                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret);
+                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL);
                 byte[] FileArray = GetKTADocumentFile(DocID, TASDKURL, TASession);
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(objSubmission.upload_url);
                 httpWebRequest.ContentType = "application/octet-stream";
@@ -302,12 +369,59 @@ namespace tungstenlabs.integration.resistantai
             }
             catch (Exception e)
             {
-                string[] arrayError = { "ERROR", e.Message.ToString(), objSubmission.submission_id };
+                
+                string[] arrayError = { "ERROR", e.ToString(), objSubmission.submission_id };
                 return arrayError;
             }
         }
 
-        private string FetchResults(String SubmissionURL, string SubmissionID)
+        private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId, int maxAttempts)
+        {
+            HttpClient httpClient = new HttpClient();
+
+            if (string.IsNullOrEmpty(AuthToken.access_token))
+                throw new Exception("Auth Token is empty!");
+
+            // set up authorization header once
+            httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+            var requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
+            string result = null;
+            int attempt = 0;
+            int delayMs = 4000;
+
+            while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result))
+            {
+                try
+                {
+                    // async wait instead of Thread.Sleep
+                    await Task.Delay(delayMs).ConfigureAwait(false);
+
+                    var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode(); // throws on non-2xx
+
+                    result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                }
+                catch (HttpRequestException ex)
+                {
+                    if (attempt >= maxAttempts)
+                        throw new Exception($"Too many failures (attempt {attempt})", ex);
+                    // else swallow and retry
+                }
+
+                // linear back-off
+                delayMs += 1000 * attempt;
+                attempt++;
+            }
+
+            if (string.IsNullOrWhiteSpace(result))
+                throw new Exception("Could not get the results from ResistantAI API");
+
+            return result;
+        }
+
+        private string FetchResults(string SubmissionURL, string SubmissionID)
         {
             if (AuthToken.access_token == "")
             {
@@ -355,18 +469,70 @@ namespace tungstenlabs.integration.resistantai
             return text;
         }
 
-        public string[] UploadFileAndFetchResults(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String DocID, String TASDKURL, String TASession)
+        public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
+        {
+            SuspendReason = "";
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
+            string statusCode = uploadresult[0];
+            string statusDesc = uploadresult[1];
+            string SubmissionID = uploadresult[2];
+
+            string[] result = new string[2];
+
+            if (statusCode.ToLower() == "error")
+            {
+                SuspendReason = "Suspended";
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else 
+            {
+                try
+                {
+                    SuspendReason = "";
+                    result[0] = SubmissionID;
+                    //result[1] = FetchResults(SubmissionURL, SubmissionID);
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries).GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    SuspendReason = "Suspended";
+                    throw e;
+                }
+                
+            }
+
+            return result;
+        }
+
+        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession)
         {
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
             string SubmissionID = uploadresult[2];
 
-            if (statusCode.ToLower() == "error") throw new Exception("Upload not successful: " + statusDesc + " - " + statusDesc + " - " + SubmissionID);
-
             string[] result = new string[2];
-            result[0] = SubmissionID;
-            result[1] = FetchResults(SubmissionURL, SubmissionID);
+
+            if (statusCode.ToLower() == "error")
+            {
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else
+            {
+                try
+                {
+                    result[0] = SubmissionID;
+                    //result[1] = FetchResults(SubmissionURL, SubmissionID);
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID,1).GetAwaiter().GetResult();
+                }
+                catch (Exception e)
+                {
+                    throw e;
+                }
+
+            }
 
             return result;
         }
