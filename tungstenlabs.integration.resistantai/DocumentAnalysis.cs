@@ -16,6 +16,8 @@ using System.Xml.Linq;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
 using Color = System.Drawing.Color;
+using System.Net.Http;
+using System.Net.Http.Headers;
 
 namespace tungstenlabs.integration.resistantai
 {
@@ -38,7 +40,7 @@ namespace tungstenlabs.integration.resistantai
 
             AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
 
-            return FetchResultsWithMetadata(SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category);
+            return FetchResultsWithMetadataAsync(SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category).Result;
             //return CreateTADocument(imageWithBoxes,TASDKURL, TASession);
 
         }
@@ -150,6 +152,66 @@ namespace tungstenlabs.integration.resistantai
 
         }
 
+
+        private async Task<string> FetchResultsWithMetadataAsync(string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
+        {
+            if (string.IsNullOrWhiteSpace(AuthToken.access_token))
+            {
+                throw new Exception("Auth Token is empty!");
+            }
+
+            using (HttpClient httpClient = new HttpClient())
+            {
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                string requrl = $"{SubmissionURL}/{SubmissionID}/fraud?with_metadata=true";
+                string text = "";
+                int counter = 0;
+                int max = 15;
+                int delay = 4000;
+
+                while (counter <= max && string.IsNullOrWhiteSpace(text))
+                {
+                    try
+                    {
+                        await Task.Delay(delay).ConfigureAwait(false);
+
+                        HttpResponseMessage response = await httpClient.GetAsync(requrl).ConfigureAwait(false);
+                        response.EnsureSuccessStatusCode();
+
+                        text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        if (counter >= max)
+                        {
+                            throw new Exception($"Too many HttpRequestExceptions after {counter} retries - {ex.Message}", ex);
+                        }
+                        // Log or swallow the exception and retry
+                    }
+                    catch (Exception ex)
+                    {
+                        throw new Exception($"An unexpected error occurred: {ex.Message}", ex);
+                    }
+
+                    delay += (1000 * counter);
+                    counter++;
+                }
+
+                if (string.IsNullOrWhiteSpace(text))
+                {
+                    throw new Exception("Could not get the results from ResistantAI API.");
+                }
+
+                List<ContentHidingEntry> CoordinatesList = ExtractContentHidingEntries(text, Category);
+
+                // If DrawBoundingBoxesOnImage is async, use await here
+                return DrawBoundingBoxesOnImageAsync(DocID, CoordinatesList, TASDKURL, TASession).Result;
+            }
+        }
+
+
         public List<ContentHidingEntry> ExtractContentHidingEntries(string jsonData, string category)
         {
             var contentHidingEntries = new List<ContentHidingEntry>();
@@ -217,7 +279,6 @@ namespace tungstenlabs.integration.resistantai
 
             return contentHidingEntries;
         }
-
         public string DrawBoundingBoxesOnImage(string DocID, List<ContentHidingEntry> boundingBoxes, string TASDKURL, string TASession)
         {
 
@@ -265,6 +326,54 @@ namespace tungstenlabs.integration.resistantai
                 }
                 return CreateTADocument(modifiedPages, TASDKURL, TASession);
                 //return SaveMultiPageTiff(modifiedPages); // Return final TIFF
+            }
+        }
+        public async Task<string> DrawBoundingBoxesOnImageAsync(string DocID, List<ContentHidingEntry> boundingBoxes, string TASDKURL, string TASession)
+        {
+            byte[] FileArray = await GetKTADocumentFileAsTiffAsync(DocID, TASDKURL, TASession);
+
+            using (MemoryStream ms = new MemoryStream(FileArray))
+            using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms))
+            {
+                FrameDimension frameDimension = new FrameDimension(image.FrameDimensionsList[0]);
+                int totalPages = image.GetFrameCount(frameDimension);
+
+                List<Bitmap> modifiedPages = new List<Bitmap>();
+
+                double pdfWidth = 612;  // Standard PDF width
+                double pdfHeight = 792; // Standard PDF height
+
+                for (int i = 0; i < totalPages; i++)
+                {
+                    image.SelectActiveFrame(frameDimension, i); // Select page
+
+                    Bitmap pageBitmap = new Bitmap(image); // Copy current page
+                    using (Graphics g = Graphics.FromImage(pageBitmap))
+                    {
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(100, Color.Yellow))) // 100/255 transparency
+                        {
+                            foreach (var box in boundingBoxes)
+                            {
+                                if (box.PageId == i) // Only process matching page
+                                {
+                                    float scaleX = (float)(pageBitmap.Width / pdfWidth);
+                                    float scaleY = (float)(pageBitmap.Height / pdfHeight);
+
+                                    float xImage = (float)(box.X * scaleX);
+                                    float widthImage = (float)(box.Width * scaleX);
+                                    float yImage = (float)((pdfHeight - box.Y - box.Height) * scaleY);
+                                    float heightImage = (float)(box.Height * scaleY);
+
+                                    g.FillRectangle(brush, xImage, yImage, widthImage, heightImage);
+                                }
+                            }
+                        }
+                    }
+
+                    modifiedPages.Add(pageBitmap); // Store modified page
+                }
+
+                return CreateTADocument(modifiedPages, TASDKURL, TASession);
             }
         }
 
@@ -322,6 +431,59 @@ namespace tungstenlabs.integration.resistantai
                 status = "An error occured: " + ex.ToString();
                 return result;
             }
+        }
+
+
+        private async Task<byte[]> GetKTADocumentFileAsTiffAsync(string docID, string ktaSDKUrl, string sessionID)
+        {
+            byte[] result = Array.Empty<byte>();
+            string requestUrl = $"{ktaSDKUrl}/CaptureDocumentService.svc/json/GetDocumentFile2";
+            int maxAttempts = 6;
+            int delayMs = 5000;
+            int attempt = 0;
+
+            while (attempt < maxAttempts)
+            {
+                try
+                {
+                    using (HttpClient httpClient = new HttpClient())
+                    {
+                        var requestPayload = new
+                        {
+                            sessionId = sessionID,
+                            reportingData = new { Station = "", MarkCompleted = false },
+                            documentId = docID,
+                            documentFileOptions = new { FileType = ".tiff", IncludeAnnotations = 0 }
+                        };
+
+                        string json = JsonConvert.SerializeObject(requestPayload);
+                        var content = new StringContent(json, Encoding.UTF8, "application/json");
+
+                        var response = await httpClient.PostAsync(requestUrl, content).ConfigureAwait(false);
+                        response.EnsureSuccessStatusCode();
+
+                        result = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+
+                        if (result.Length > 0)
+                        {
+                            return result;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    if (attempt >= maxAttempts - 1)
+                    {
+                        throw new Exception($"Failed to get KTA document after {maxAttempts} attempts. Last error: {ex.Message}", ex);
+                    }
+                    // else swallow and retry after delay
+                }
+
+                await Task.Delay(delayMs).ConfigureAwait(false);
+                attempt++;
+            }
+
+            throw new Exception("Could not retrieve the KTA document as TIFF after retries.");
         }
 
 
