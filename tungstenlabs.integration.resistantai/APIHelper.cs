@@ -10,6 +10,7 @@ using System.Runtime.Serialization.Json;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json.Linq;
 
 /*
  * tungstenlabs.integration.resistantai.ResistantAIConnector
@@ -98,6 +99,7 @@ namespace tungstenlabs.integration.resistantai
         public const string RAI_CLIENT_ID = "RAI-CLIENT-ID";
         public const string RAI_CLIENT_SECRET = "RAI-CLIENT-SECRET";
         public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
+        public const string RAI_ENABLE_DECISION = "RAI-ENABLE-DECISION";
 
         private DO_AuthCodeParamteres AuthToken { get; set; }
 
@@ -161,6 +163,7 @@ namespace tungstenlabs.integration.resistantai
                 try 
                 {
                     shouldRetry = false;
+                     bool enableDecisionValue = RetrieveEnableDecisionValue(taSessionId, taSdkUrl);
                     //Setting the URi and calling the get document API
                     //DO_AuthCodeParamteres ReturnParamteres = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
                     //AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
@@ -170,7 +173,15 @@ namespace tungstenlabs.integration.resistantai
                     httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, string.Format("Bearer {0}", AuthToken.access_token));
                     httpWebRequest.Method = "POST";
                     // CONSTRUCT JSON Payload
-                    string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":false,\"enable_submission_characteristics\":false}";
+                    //string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":{enableDecisionValue.ToString().ToLower()},\"enable_submission_characteristics\":false}";
+
+                    string requestBody = $@"{{
+                        ""query_id"": ""string"",
+                        ""pipeline_configuration"": ""FRAUD_ONLY"",
+                        ""enable_decision"": {enableDecisionValue.ToString().ToLower()},
+                        ""enable_submission_characteristics"": false
+                    }}";
+
 
                     // Convert the request body string to bytes
                     byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
@@ -239,6 +250,29 @@ namespace tungstenlabs.integration.resistantai
             } while (shouldRetry);
 
             return null;
+        }
+
+        private bool RetrieveEnableDecisionValue(string taSessionId, string taSdkUrl)
+        {
+            try
+            {
+                List<string> vars = new List<string>() { RAI_ENABLE_DECISION };
+                ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                var sv = serverVariableHelper.GetServerVariables(taSessionId, taSdkUrl, vars);
+                if (sv.ContainsKey(RAI_ENABLE_DECISION))
+                {
+                    return sv[RAI_ENABLE_DECISION].Value.ToLower() == "true";
+                }
+                else
+                {
+                    return false; // Default value if not found
+                }
+
+            }
+            catch (Exception ex)
+            {
+                return false;
+            }
         }
 
         private DO_Submission UploadFile(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret)
@@ -420,6 +454,86 @@ namespace tungstenlabs.integration.resistantai
 
             return result;
         }
+
+
+
+
+
+        private async Task<string[]> FetchAdaptiveResultAsync(string submissionUrl, string submissionId, int maxAttempts, String TASDKURL, String TASession)
+        {
+            HttpClient httpClient = new HttpClient();
+            AuthToken = GetTokenFromTA(TASession, TASDKURL);
+            if (string.IsNullOrEmpty(AuthToken.access_token))
+                throw new Exception("Auth Token is empty!");
+
+            httpClient.DefaultRequestHeaders.Authorization =
+                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+            var requestUri = $"{submissionUrl}/{submissionId}/decision";
+            string[] result = new string[2];
+            int attempt = 0;
+            int delayMs = 4000;
+
+            while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result[0]))
+            {
+                try
+                {
+                    await Task.Delay(delayMs).ConfigureAwait(false);
+
+                    var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+                    var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                    if (response.StatusCode == HttpStatusCode.BadRequest)
+                    {
+                        var json = JObject.Parse(content);
+                        if (json["message"]?.ToString()?.Contains("Adaptive Decision feature enabled") == true)
+                        {
+                            result[0] = "Adaptive Decision feature was not enabled for this submission.";
+                            result[1] = "Adaptive Decision feature was not enabled for this submission.";
+                            return result;
+                        }
+                        else
+                        {
+                            throw new Exception($"Bad request: {content}");
+                        }
+                    }
+
+                    response.EnsureSuccessStatusCode();
+
+                    var resultJson = JObject.Parse(content);
+                    if (resultJson["decision"] != null)
+                    {
+                        result[0] = resultJson["decision"]?.ToString();
+                        result[1] = resultJson["reason"]?["sub_reason"]?["label"]?.ToString();
+                        break; // Got result, exit loop
+                    }
+                }
+                catch (HttpRequestException ex)
+                {
+                    if (attempt >= maxAttempts)
+                        throw new Exception($"Too many failures (attempt {attempt})", ex);
+                }
+
+                delayMs += 1000 * attempt;
+                attempt++;
+            }
+
+            if (string.IsNullOrWhiteSpace(result[0]))
+                throw new Exception("Could not get Adaptive Decision result from ResistantAI API.");
+
+            return result;
+        }
+
+
+
+        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, String TASDKURL, String TASession)
+        {
+            return FetchAdaptiveResultAsync(submissionUrl, submissionId, 3, TASDKURL, TASession).GetAwaiter().GetResult();
+        }
+
+
+
+
 
         private string FetchResults(string SubmissionURL, string SubmissionID)
         {

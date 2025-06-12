@@ -8,22 +8,24 @@ namespace tungstenlabs.integration.resistantai.tests
     public class APIHelperTests
     {
         private ResistantAIConnector oRAI = new ResistantAIConnector();
-       private DocumentAnalysis DAHelper = new DocumentAnalysis();  
+       private DocumentAnalysis DAHelper = new DocumentAnalysis();
 
         [TestMethod]
         public void UploadFileAndFetchResults()
         {
 
-           
 
 
-        string temp;
+
+            string temp;
             string[] response = oRAI.UploadFileAndFetchResults(
                 Constants.RAI_URL_TOKEN, Constants.RAI_URL_API, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET,
                 @"24a89003-fa7d-4239-9d88-b2a60145e0ab", //document id
                 Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID);
-        }
 
+
+            string[] result = oRAI.GetAdaptiveResult(Constants.RAI_URL_API, response[0], Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID);
+                }
         [TestMethod]        
         public void GetDocumentWithBoundingBoxes()
         {
