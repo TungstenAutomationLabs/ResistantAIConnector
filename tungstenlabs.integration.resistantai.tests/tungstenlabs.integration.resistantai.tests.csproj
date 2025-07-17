@@ -118,9 +118,9 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Xml" />
-    <Reference Include="tungstenlabs.integration.resistantai, Version=1.0.0.30155, Culture=neutral, PublicKeyToken=3b2cf567d3ffd915, processorArchitecture=MSIL">
+    <Reference Include="tungstenlabs.integration.resistantai, Version=1.0.0.29570, Culture=neutral, PublicKeyToken=3b2cf567d3ffd915, processorArchitecture=MSIL">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\tungstenlabs.integration.resistantai\bin\Release\tungstenlabs.integration.resistantai.dll</HintPath>
+      <HintPath>..\tungstenlabs.integration.resistantai\bin\Debug\tungstenlabs.integration.resistantai.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
