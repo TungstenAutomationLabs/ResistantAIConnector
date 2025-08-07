@@ -18,13 +18,18 @@ namespace tungstenlabs.integration.resistantai.tests
 
 
             string temp;
+            string suspendReason;
             string[] response = oRAI.UploadFileAndFetchResults(
-                Constants.RAI_URL_TOKEN, Constants.RAI_URL_API, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET,
-                @"09ef3632-b429-4dfb-b690-b30101053e67", //document id
+                Constants.RAI_URL_TOKEN, Constants.RAI_URL_API, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET, "DocumentName.PDF",
+                @"7ee246e1-b3be-4fd4-9303-b323013e19d3", //document id
                 Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID);
 
+            string[] response1 = oRAI.UploadFileAndFetchResultsWithRetries(
+                Constants.RAI_URL_TOKEN, Constants.RAI_URL_API, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET, "DocumentName.PDF",
+                @"7ee246e1-b3be-4fd4-9303-b323013e19d3", //document id
+                Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID, 10, out suspendReason);
 
-            string[] result = oRAI.GetAdaptiveResult(Constants.RAI_URL_API, response[0], Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID);
+            string[] result = oRAI.GetAdaptiveResult(Constants.RAI_URL_API, response[0],3, Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID);
                 }
         [TestMethod]        
         public void GetDocumentWithBoundingBoxes()

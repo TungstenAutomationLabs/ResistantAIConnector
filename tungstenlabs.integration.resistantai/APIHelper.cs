@@ -100,6 +100,7 @@ namespace tungstenlabs.integration.resistantai
         public const string RAI_CLIENT_SECRET = "RAI-CLIENT-SECRET";
         public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
         public const string RAI_ENABLE_DECISION = "RAI-ENABLE-DECISION";
+        
 
         private DO_AuthCodeParamteres AuthToken { get; set; }
 
@@ -155,7 +156,7 @@ namespace tungstenlabs.integration.resistantai
             return new DO_AuthCodeParamteres() { access_token = sv[RAI_CLIENT_TOKEN].Value };
         }
 
-        private DO_Submission Submission(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, string taSessionId, string taSdkUrl)
+        private DO_Submission Submission(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, string taSessionId, string taSdkUrl, string queryId)
         {
             bool shouldRetry = false;
             do
@@ -164,6 +165,7 @@ namespace tungstenlabs.integration.resistantai
                 {
                     shouldRetry = false;
                      bool enableDecisionValue = RetrieveEnableDecisionValue(taSessionId, taSdkUrl);
+                    
                     //Setting the URi and calling the get document API
                     //DO_AuthCodeParamteres ReturnParamteres = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
                     //AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
@@ -176,7 +178,7 @@ namespace tungstenlabs.integration.resistantai
                     //string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":{enableDecisionValue.ToString().ToLower()},\"enable_submission_characteristics\":false}";
 
                     string requestBody = $@"{{
-                        ""query_id"": ""string"",
+                        ""query_id"": ""{queryId}"",
                         ""pipeline_configuration"": ""FRAUD_ONLY"",
                         ""enable_decision"": {enableDecisionValue.ToString().ToLower()},
                         ""enable_submission_characteristics"": false
@@ -251,6 +253,8 @@ namespace tungstenlabs.integration.resistantai
 
             return null;
         }
+
+        
 
         private bool RetrieveEnableDecisionValue(string taSessionId, string taSdkUrl)
         {
@@ -371,13 +375,13 @@ namespace tungstenlabs.integration.resistantai
             //}
         }
 
-        private String[] UploadFiles(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String DocID, String TASDKURL, String TASession)
+        private String[] UploadFiles(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String QueryId, String DocID, String TASDKURL, String TASession)
         {
             AuthToken = GetTokenFromTA(TASession, TASDKURL);
             DO_Submission objSubmission = new DO_Submission();
             try
             {   //calling authorization and submission API CAlls and get SubmissionID and UploadURl in return
-                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL);
+                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL, QueryId);
                 byte[] FileArray = GetKTADocumentFile(DocID, TASDKURL, TASession);
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(objSubmission.upload_url);
                 httpWebRequest.ContentType = "application/octet-stream";
@@ -526,9 +530,9 @@ namespace tungstenlabs.integration.resistantai
 
 
 
-        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, String TASDKURL, String TASession)
+        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, String TASDKURL, String TASession)
         {
-            return FetchAdaptiveResultAsync(submissionUrl, submissionId, 3, TASDKURL, TASession).GetAwaiter().GetResult();
+            return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession).GetAwaiter().GetResult();
         }
 
 
@@ -583,10 +587,10 @@ namespace tungstenlabs.integration.resistantai
             return text;
         }
 
-        public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
+        public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
         {
             SuspendReason = "";
-            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
             string SubmissionID = uploadresult[2];
@@ -619,9 +623,9 @@ namespace tungstenlabs.integration.resistantai
             return result;
         }
 
-        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession)
+        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID, string TASDKURL, string TASession)
         {
-            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, DocID, TASDKURL, TASession);
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
             string SubmissionID = uploadresult[2];
