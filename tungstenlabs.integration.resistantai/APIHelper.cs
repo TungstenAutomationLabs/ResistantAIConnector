@@ -100,52 +100,119 @@ namespace tungstenlabs.integration.resistantai
         public const string RAI_CLIENT_SECRET = "RAI-CLIENT-SECRET";
         public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
         public const string RAI_ENABLE_DECISION = "RAI-ENABLE-DECISION";
-        
+        public const string RAI_PROXY_ENABLE = "RAI-PROXY-ENABLE";
+        public const string RAI_PROXY_URL = "RAI-PROXY-URL";
+        public const string RAI_PROXY_USERNAME = "RAI-PROXY-USERNAME";
+        public const string RAI_PROXY_PASSWORD = "RAI-PROXY-PASSWORD";
+        private IWebProxy _cachedProxy = null;
 
         private DO_AuthCodeParamteres AuthToken { get; set; }
 
         private DO_AuthCodeParamteres RefreshAuthToken(String URL, String ClientID, String ClientSecret)
         {
-            //Setting the URi and calling the get document API
+            // Prepare Basic Auth header
             string credentials = string.Format("{0}:{1}", ClientID, ClientSecret);
             string base64Credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(credentials));
 
+            // Create request
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(URL);
             httpWebRequest.ContentType = "application/x-www-form-urlencoded";
             httpWebRequest.Accept = "application/json";
             httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, "Basic " + base64Credentials);
             httpWebRequest.Method = "POST";
-            // CONSTRUCT JSON Payload
+
+            if (_cachedProxy != null)
+            {
+                httpWebRequest.Proxy = _cachedProxy;
+            }
+
+
+            // Payload
             string requestBody = "grant_type=client_credentials&scope=submissions.read submissions.write";
-            // Convert the request body string to bytes
             byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
-            // Set the ContentLength of the request
             httpWebRequest.ContentLength = requestBodyBytes.Length;
-            // Write the request body to the request stream
+
+            // Write body
             using (var requestStream = httpWebRequest.GetRequestStream())
             {
                 requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
                 requestStream.Flush();
             }
-            //Reading response from API
+
+            // Read response
             String responseText = String.Empty;
             DO_AuthCodeParamteres bsObj2;
+
             HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
             var encoding = ASCIIEncoding.UTF8;
+
             using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
             {
                 responseText = reader.ReadToEnd();
             }
-            //deserialize JSON string to its key value pairs
+
+            // Deserialize JSON
             using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
             {
-                // Deserialization from JSON
                 DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_AuthCodeParamteres));
                 bsObj2 = (DO_AuthCodeParamteres)deserializer.ReadObject(ms);
             }
-            // String[] ReturnParamteres = { bsObj2.access_token, bsObj2.expires_in, bsObj2.token_type, bsObj2.scope };
+
             return bsObj2;
         }
+
+
+        private IWebProxy GetProxyIfEnabled(string taSessionId, string taSdkUrl)
+        {
+            try
+            {
+                ServerVariableHelper helper = new ServerVariableHelper();
+
+                List<string> vars = new List<string>()
+                {
+                    RAI_PROXY_ENABLE,
+                    RAI_PROXY_URL,
+                    RAI_PROXY_USERNAME,
+                    RAI_PROXY_PASSWORD
+                };
+
+                var sv = helper.GetServerVariables(taSessionId, taSdkUrl, vars);
+
+                bool proxyEnabled = sv[RAI_PROXY_ENABLE].Value.ToLower() == "true";
+                string proxyUrl = sv[RAI_PROXY_URL].Value;
+                string proxyUser = sv[RAI_PROXY_USERNAME].Value;
+                string proxyPass = sv[RAI_PROXY_PASSWORD].Value;
+
+                if (!proxyEnabled || string.IsNullOrWhiteSpace(proxyUrl))
+                    return null;
+
+                //WebProxy proxy = new WebProxy(proxyUrl);
+                WebProxy proxy = new WebProxy(proxyUrl)
+                {
+                    BypassProxyOnLocal = false,   // do NOT bypass local or anything else
+                    BypassList = Array.Empty<string>()
+                };
+
+
+                if (!string.IsNullOrWhiteSpace(proxyUser))
+                {
+                    proxy.Credentials = new NetworkCredential(proxyUser, proxyPass);
+                }
+                else
+                {
+                    //proxy.Credentials = CredentialCache.DefaultCredentials;
+                    proxy.UseDefaultCredentials = true;
+                }                
+                
+                return proxy;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+
 
         private DO_AuthCodeParamteres GetTokenFromTA(string taSessionId, string taSdkUrl)
         {
@@ -174,6 +241,12 @@ namespace tungstenlabs.integration.resistantai
                     httpWebRequest.Accept = "*/*";
                     httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, string.Format("Bearer {0}", AuthToken.access_token));
                     httpWebRequest.Method = "POST";
+
+                    if (_cachedProxy != null)
+                    {
+                        httpWebRequest.Proxy = _cachedProxy;
+                    }
+
                     // CONSTRUCT JSON Payload
                     //string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":{enableDecisionValue.ToString().ToLower()},\"enable_submission_characteristics\":false}";
 
@@ -233,6 +306,12 @@ namespace tungstenlabs.integration.resistantai
                     {
                         throw new WebException($"HTTP Error: {httpResponse.StatusCode}", ex);
                     }
+                }
+                
+                catch (WebException ex) when (ex.Response is HttpWebResponse httpResponse &&
+                               httpResponse.StatusCode == HttpStatusCode.ProxyAuthenticationRequired)
+                {
+                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings in TA Server Variables.", ex);
                 }
                 catch (WebException ex)
                 {
@@ -334,6 +413,8 @@ namespace tungstenlabs.integration.resistantai
                 //Setting the URi and calling the get document API
                 var KTAGetDocumentFile = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetDocumentFile2";
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(KTAGetDocumentFile);
+
+                httpWebRequest.Proxy = null;
                 httpWebRequest.ContentType = "application/json";
                 httpWebRequest.Method = "POST";
 
@@ -387,6 +468,13 @@ namespace tungstenlabs.integration.resistantai
                 httpWebRequest.ContentType = "application/octet-stream";
                 httpWebRequest.ContentLength = FileArray.Length;
                 httpWebRequest.Method = "PUT";
+
+
+                if (_cachedProxy != null)
+                {
+                    httpWebRequest.Proxy = _cachedProxy;
+                }
+
                 // CONSTRUCT JSON Payload
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
@@ -415,16 +503,32 @@ namespace tungstenlabs.integration.resistantai
 
         private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId, int maxAttempts)
         {
-            HttpClient httpClient = new HttpClient();
-
             if (string.IsNullOrEmpty(AuthToken.access_token))
                 throw new Exception("Auth Token is empty!");
 
-            // set up authorization header once
+          
+          
+            HttpClientHandler handler = new HttpClientHandler();
+
+            if (_cachedProxy != null)
+            {
+                handler.Proxy = _cachedProxy;   // Proxy URL + credentials already set in _cachedProxy
+                handler.UseProxy = true;
+            }
+            else
+            {
+                handler.UseProxy = false;
+            }
+
+            HttpClient httpClient = new HttpClient(handler);
+            
+
+            // Set Authorization header
             httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
 
-            var requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
+            string requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
+
             string result = null;
             int attempt = 0;
             int delayMs = 4000;
@@ -433,23 +537,28 @@ namespace tungstenlabs.integration.resistantai
             {
                 try
                 {
-                    // async wait instead of Thread.Sleep
                     await Task.Delay(delayMs).ConfigureAwait(false);
 
-                    var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode(); // throws on non-2xx
+                    HttpResponseMessage response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+                    response.EnsureSuccessStatusCode();
 
                     result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                }
+
+                catch (HttpRequestException ex) when (IsProxyAuthError(ex))
+                {
+                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings.", ex);
                 }
                 catch (HttpRequestException ex)
                 {
                     if (attempt >= maxAttempts)
                         throw new Exception($"Too many failures (attempt {attempt})", ex);
-                    // else swallow and retry
+
+                    // else retry
                 }
 
-                // linear back-off
-                delayMs += 1000 * attempt;
+
+                delayMs += 1000 * attempt;  // linear back-off
                 attempt++;
             }
 
@@ -462,10 +571,22 @@ namespace tungstenlabs.integration.resistantai
 
 
 
-
         private async Task<string[]> FetchAdaptiveResultAsync(string submissionUrl, string submissionId, int maxAttempts, String TASDKURL, String TASession)
         {
-            HttpClient httpClient = new HttpClient();
+            var handler = new HttpClientHandler();
+
+            if (_cachedProxy != null)
+            {
+                handler.Proxy = _cachedProxy;
+                handler.UseProxy = true;
+            }
+            else
+            {
+                handler.UseProxy = false;
+            }
+
+            HttpClient httpClient = new HttpClient(handler);
+
             AuthToken = GetTokenFromTA(TASession, TASDKURL);
             if (string.IsNullOrEmpty(AuthToken.access_token))
                 throw new Exception("Auth Token is empty!");
@@ -512,6 +633,11 @@ namespace tungstenlabs.integration.resistantai
                         break; // Got result, exit loop
                     }
                 }
+                
+                catch (HttpRequestException ex) when (IsProxyAuthError(ex))
+                {
+                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings.", ex);
+                }
                 catch (HttpRequestException ex)
                 {
                     if (attempt >= maxAttempts)
@@ -528,6 +654,18 @@ namespace tungstenlabs.integration.resistantai
             return result;
         }
 
+        private bool IsProxyAuthError(HttpRequestException ex)
+        {
+            var webEx = ex.InnerException as WebException;
+            if (webEx == null)
+                return false;
+
+            var response = webEx.Response as HttpWebResponse;
+            if (response == null)
+                return false;
+
+            return response.StatusCode == HttpStatusCode.ProxyAuthenticationRequired; // 407
+        }
 
 
         public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, String TASDKURL, String TASession)
@@ -590,6 +728,8 @@ namespace tungstenlabs.integration.resistantai
         public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
         {
             SuspendReason = "";
+            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
+
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
@@ -625,6 +765,7 @@ namespace tungstenlabs.integration.resistantai
 
         public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID, string TASDKURL, string TASession)
         {
+            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];

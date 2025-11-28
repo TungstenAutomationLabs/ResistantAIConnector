@@ -32,26 +32,34 @@ namespace tungstenlabs.integration.resistantai
     }
     public class DocumentAnalysis
     {
+        public const string RAI_PROXY_ENABLE = "RAI-PROXY-ENABLE";
+        public const string RAI_PROXY_URL = "RAI-PROXY-URL";
+        public const string RAI_PROXY_USERNAME = "RAI-PROXY-USERNAME";
+        public const string RAI_PROXY_PASSWORD = "RAI-PROXY-PASSWORD";
+
+
         private DO_AuthCodeParamteres AuthToken { get; set; }
         
         public string GetDocumentWithBoundingBoxes(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String DocID, String TASDKURL, String TASession, String SubmissionID, String Category)
         {
             string documentIdWithBoundingBoxes = string.Empty;
 
-            AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
+            AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret, TASDKURL, TASession);
 
             return FetchResultsWithMetadataAsync(SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category).Result;
             //return CreateTADocument(imageWithBoxes,TASDKURL, TASession);
 
         }
 
-        private DO_AuthCodeParamteres GetAuthToken(String URL, String ClientID, String ClientSecret)
+        private DO_AuthCodeParamteres GetAuthToken(String URL, String ClientID, String ClientSecret, String TASDKURL, String TASession)
         {
             //Setting the URi and calling the get document API
             string credentials = string.Format("{0}:{1}", ClientID, ClientSecret);
             string base64Credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(credentials));
 
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(URL);
+            httpWebRequest.Proxy = GetProxyIfEnabled(TASDKURL, TASession);
+
             httpWebRequest.ContentType = "application/x-www-form-urlencoded";
             httpWebRequest.Accept = "application/json";
             httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, "Basic " + base64Credentials);
@@ -111,6 +119,8 @@ namespace tungstenlabs.integration.resistantai
                 {
                     Thread.Sleep(delay);
                     httpWebRequest = (HttpWebRequest)WebRequest.Create(requrl);
+                    httpWebRequest.Proxy = GetProxyIfEnabled(TASession, TASDKURL);
+
                     httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, $"Bearer {AuthToken.access_token}");
                     httpWebRequest.Method = "GET";
                     httpWebRequest.ContentType = "application/json";
@@ -160,10 +170,20 @@ namespace tungstenlabs.integration.resistantai
                 throw new Exception("Auth Token is empty!");
             }
 
-            using (HttpClient httpClient = new HttpClient())
+            var proxy = GetProxyIfEnabled(TASession, TASDKURL);
+            var handler = new HttpClientHandler();
+
+            if (proxy != null)
+            {
+                handler.Proxy = proxy;
+                handler.UseProxy = true;
+            }
+
+            using (HttpClient httpClient = new HttpClient(handler))
             {
                 httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
 
                 string requrl = $"{SubmissionURL}/{SubmissionID}/fraud?with_metadata=true";
                 string text = "";
@@ -391,6 +411,8 @@ namespace tungstenlabs.integration.resistantai
                 //Setting the URi and calling the get document API
                 var KTAGetDocumentFile = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetDocumentFile2";
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(KTAGetDocumentFile);
+                httpWebRequest.Proxy = null;  
+
                 httpWebRequest.ContentType = "application/json";
                 httpWebRequest.Method = "POST";
 
@@ -446,7 +468,11 @@ namespace tungstenlabs.integration.resistantai
             {
                 try
                 {
-                    using (HttpClient httpClient = new HttpClient())
+                    var handler = new HttpClientHandler();
+                    handler.Proxy = null;        
+                    handler.UseProxy = false;      
+
+                    using (HttpClient httpClient = new HttpClient(handler))
                     {
                         var requestPayload = new
                         {
@@ -486,6 +512,55 @@ namespace tungstenlabs.integration.resistantai
             throw new Exception("Could not retrieve the KTA document as TIFF after retries.");
         }
 
+        private IWebProxy GetProxyIfEnabled(string taSdkUrl, string taSessionId)
+        {
+            try
+            {
+                ServerVariableHelper helper = new ServerVariableHelper();
+
+                List<string> vars = new List<string>()
+                {
+                    RAI_PROXY_ENABLE,
+                    RAI_PROXY_URL,
+                    RAI_PROXY_USERNAME,
+                    RAI_PROXY_PASSWORD
+                };
+
+                var sv = helper.GetServerVariables(taSessionId, taSdkUrl, vars);
+
+                bool proxyEnabled = sv[RAI_PROXY_ENABLE].Value.ToLower() == "true";
+                string proxyUrl = sv[RAI_PROXY_URL].Value;
+                string proxyUser = sv[RAI_PROXY_USERNAME].Value;
+                string proxyPass = sv[RAI_PROXY_PASSWORD].Value;
+
+                if (!proxyEnabled || string.IsNullOrWhiteSpace(proxyUrl))
+                    return null;
+
+                //WebProxy proxy = new WebProxy(proxyUrl);
+                WebProxy proxy = new WebProxy(proxyUrl)
+                {
+                    BypassProxyOnLocal = false,   // do NOT bypass local or anything else
+                    BypassList = Array.Empty<string>()
+                };
+
+
+                if (!string.IsNullOrWhiteSpace(proxyUser))
+                {
+                    proxy.Credentials = new NetworkCredential(proxyUser, proxyPass);
+                }
+                else
+                {
+                    //proxy.Credentials = CredentialCache.DefaultCredentials;
+                    proxy.UseDefaultCredentials = true;
+                }
+
+                return proxy;
+            }
+            catch
+            {
+                return null;
+            }
+        }
 
 
         private string CreateTADocument(List<Bitmap> pages, string ktaSDKUrl, string sessionID)
@@ -497,6 +572,8 @@ namespace tungstenlabs.integration.resistantai
             {
                 var createDocumentURL = ktaSDKUrl + "/CaptureDocumentService.svc/json/CreateDocument3";
                 HttpWebRequest request = (HttpWebRequest)WebRequest.Create(createDocumentURL);
+                request.Proxy = null;
+
                 request.Timeout = 300000;
                 request.ContentType = "application/json";
                 request.Method = "POST";
@@ -566,13 +643,6 @@ namespace tungstenlabs.integration.resistantai
                 return memoryStream.ToArray();  // Return the byte array
             }
         }
-
-
-
-
-
-
-
 
 
     }
