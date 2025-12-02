@@ -30,77 +30,173 @@ namespace tungstenlabs.integration.resistantai
         public float Width { get; set; }
         public float Height { get; set; }
     }
+
     public class DocumentAnalysis
     {
+        
         public const string RAI_PROXY_ENABLE = "RAI-PROXY-ENABLE";
         public const string RAI_PROXY_URL = "RAI-PROXY-URL";
         public const string RAI_PROXY_USERNAME = "RAI-PROXY-USERNAME";
         public const string RAI_PROXY_PASSWORD = "RAI-PROXY-PASSWORD";
 
-
-        private DO_AuthCodeParamteres AuthToken { get; set; }
         
-        public string GetDocumentWithBoundingBoxes(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String DocID, String TASDKURL, String TASession, String SubmissionID, String Category)
+        public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
+
+        private IWebProxy _cachedProxy = null;
+        private DO_AuthCodeParamteres AuthToken { get; set; }
+
+        /// <summary>
+        /// Entry point – gets RAI token from TA, aligns proxy with APIHelper, fetches metadata,
+        /// draws bounding boxes on the TIFF from KTA, and creates a new KTA document.
+        /// Returns the new KTA DocumentId.
+        /// </summary>
+        public string GetDocumentWithBoundingBoxes(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
         {
-            string documentIdWithBoundingBoxes = string.Empty;
+            
+            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
 
-            AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret, TASDKURL, TASession);
+            
+            AuthToken = GetTokenFromTA(TASession, TASDKURL);
 
-            return FetchResultsWithMetadataAsync(SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category).Result;
-            //return CreateTADocument(imageWithBoxes,TASDKURL, TASession);
+            if (AuthToken == null || string.IsNullOrEmpty(AuthToken.access_token))
+                throw new Exception("Auth Token is empty!");
 
+            
+            return FetchResultsWithMetadataAsync(AuthenticationURL, SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category, ClientID, ClientSecret ).GetAwaiter().GetResult();
         }
 
-        private DO_AuthCodeParamteres GetAuthToken(String URL, String ClientID, String ClientSecret, String TASDKURL, String TASession)
+        #region Token + Proxy handling (aligned with APIHelper.cs)
+
+        private DO_AuthCodeParamteres RefreshAuthToken(string URL, string ClientID, string ClientSecret)
         {
-            //Setting the URi and calling the get document API
+            // Prepare Basic Auth header
             string credentials = string.Format("{0}:{1}", ClientID, ClientSecret);
             string base64Credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(credentials));
 
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(URL);
-            httpWebRequest.Proxy = GetProxyIfEnabled(TASDKURL, TASession);
-
             httpWebRequest.ContentType = "application/x-www-form-urlencoded";
             httpWebRequest.Accept = "application/json";
             httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, "Basic " + base64Credentials);
             httpWebRequest.Method = "POST";
-            // CONSTRUCT JSON Payload
+
+            if (_cachedProxy != null)
+            {
+                httpWebRequest.Proxy = _cachedProxy;
+            }
+
             string requestBody = "grant_type=client_credentials&scope=submissions.read submissions.write";
-            // Convert the request body string to bytes
             byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
-            // Set the ContentLength of the request
             httpWebRequest.ContentLength = requestBodyBytes.Length;
-            // Write the request body to the request stream
+
             using (var requestStream = httpWebRequest.GetRequestStream())
             {
                 requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
                 requestStream.Flush();
             }
-            //Reading response from API
-            String responseText = String.Empty;
+
+            string responseText = string.Empty;
             DO_AuthCodeParamteres bsObj2;
+
             HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
             var encoding = ASCIIEncoding.UTF8;
-            using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
+
+            using (var reader = new StreamReader(httpWebResponse.GetResponseStream(), encoding))
             {
                 responseText = reader.ReadToEnd();
             }
-            //deserialize JSON string to its key value pairs
+
             using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
             {
-                // Deserialization from JSON
                 DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_AuthCodeParamteres));
                 bsObj2 = (DO_AuthCodeParamteres)deserializer.ReadObject(ms);
             }
-            // String[] ReturnParamteres = { bsObj2.access_token, bsObj2.expires_in, bsObj2.token_type, bsObj2.scope };
+
             return bsObj2;
         }
 
-
-
-        private string FetchResultsWithMetadata(String SubmissionURL, String DocID, String TASDKURL, String TASession, String SubmissionID, String Category)
+        private DO_AuthCodeParamteres GetTokenFromTA(string taSessionId, string taSdkUrl)
         {
-            if (AuthToken.access_token == "")
+            List<string> vars = new List<string>() { RAI_CLIENT_TOKEN };
+            ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+            var sv = serverVariableHelper.GetServerVariables(taSessionId, taSdkUrl, vars);
+
+            return new DO_AuthCodeParamteres()
+            {
+                access_token = sv[RAI_CLIENT_TOKEN].Value
+            };
+        }
+
+        private IWebProxy GetProxyIfEnabled(string taSessionId, string taSdkUrl)
+        {
+            try
+            {
+                ServerVariableHelper helper = new ServerVariableHelper();
+
+                List<string> vars = new List<string>()
+                {
+                    RAI_PROXY_ENABLE,
+                    RAI_PROXY_URL,
+                    RAI_PROXY_USERNAME,
+                    RAI_PROXY_PASSWORD
+                };
+
+                var sv = helper.GetServerVariables(taSessionId, taSdkUrl, vars);
+
+                bool proxyEnabled = sv[RAI_PROXY_ENABLE].Value.ToLower() == "true";
+                string proxyUrl = sv[RAI_PROXY_URL].Value;
+                string proxyUser = sv[RAI_PROXY_USERNAME].Value;
+                string proxyPass = sv[RAI_PROXY_PASSWORD].Value;
+
+                if (!proxyEnabled || string.IsNullOrWhiteSpace(proxyUrl))
+                    return null;
+
+                WebProxy proxy = new WebProxy(proxyUrl)
+                {
+                    BypassProxyOnLocal = false,
+                    BypassList = Array.Empty<string>()
+                };
+
+                if (!string.IsNullOrWhiteSpace(proxyUser))
+                {
+                    proxy.Credentials = new NetworkCredential(proxyUser, proxyPass);
+                }
+                else
+                {
+                    proxy.UseDefaultCredentials = true;
+                }
+
+                return proxy;
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private bool IsProxyAuthError(HttpRequestException ex)
+        {
+            var webEx = ex.InnerException as WebException;
+            if (webEx == null)
+                return false;
+
+            var response = webEx.Response as HttpWebResponse;
+            if (response == null)
+                return false;
+
+            return response.StatusCode == HttpStatusCode.ProxyAuthenticationRequired; // 407
+        }
+
+        #endregion
+
+        #region Fetch RAI results + draw bounding boxes
+
+        /// <summary>
+        /// Old synchronous version kept for compatibility (still uses WebRequest).
+        /// Not used by GetDocumentWithBoundingBoxes, which uses the async version.
+        /// </summary>
+        private string FetchResultsWithMetadata(string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
+        {
+            if (AuthToken == null || AuthToken.access_token == "")
             {
                 throw new Exception("Auth Token is empty!");
             }
@@ -108,7 +204,7 @@ namespace tungstenlabs.integration.resistantai
             HttpWebRequest httpWebRequest;
             HttpWebResponse httpWebResponse;
             string text = "";
-            string requrl = $"{SubmissionURL}/{SubmissionID}/fraud?with_metadata=true";  // Add the with_metadata=true parameter
+            string requrl = $"{SubmissionURL}/{SubmissionID}/fraud?with_metadata=true";
             int counter = 0;
             int max = 15;
             int delay = 4000;
@@ -119,7 +215,7 @@ namespace tungstenlabs.integration.resistantai
                 {
                     Thread.Sleep(delay);
                     httpWebRequest = (HttpWebRequest)WebRequest.Create(requrl);
-                    httpWebRequest.Proxy = GetProxyIfEnabled(TASession, TASDKURL);
+                    httpWebRequest.Proxy = _cachedProxy ?? GetProxyIfEnabled(TASession, TASDKURL);
 
                     httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, $"Bearer {AuthToken.access_token}");
                     httpWebRequest.Method = "GET";
@@ -134,7 +230,6 @@ namespace tungstenlabs.integration.resistantai
                 }
                 catch (WebException ex)
                 {
-                    // Handle potential web exceptions
                     if (counter >= max)
                     {
                         throw new Exception($"Too many WebExceptions after {counter} retries - {ex.Message}", ex);
@@ -142,11 +237,10 @@ namespace tungstenlabs.integration.resistantai
                 }
                 catch (Exception ex)
                 {
-                    // Handle other types of exceptions
                     throw new Exception($"An unexpected error occurred: {ex.Message}", ex);
                 }
 
-                delay += (1000 * counter); // Increase delay dynamically
+                delay += (1000 * counter);
                 counter++;
             }
 
@@ -157,33 +251,40 @@ namespace tungstenlabs.integration.resistantai
 
             List<ContentHidingEntry> CoordinatesList = ExtractContentHidingEntries(text, Category);
 
-
             return DrawBoundingBoxesOnImage(DocID, CoordinatesList, TASDKURL, TASession);
-
         }
 
-
-        private async Task<string> FetchResultsWithMetadataAsync(string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
+        /// <summary>
+        /// Async version aligned with APIHelper FetchResultsAsync:
+        /// - Uses HttpClient + HttpClientHandler
+        /// - Uses _cachedProxy
+        /// - Retries with backoff
+        /// - Handles proxy 407 and token refresh (401/403) via RefreshAuthToken + TA update
+        /// Returns new KTA DocumentId.
+        /// </summary>
+        private async Task<string> FetchResultsWithMetadataAsync(string AuthenticationURL, string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category, string ClientID, string ClientSecret)
         {
-            if (string.IsNullOrWhiteSpace(AuthToken.access_token))
+            if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
             {
                 throw new Exception("Auth Token is empty!");
             }
 
-            var proxy = GetProxyIfEnabled(TASession, TASDKURL);
-            var handler = new HttpClientHandler();
+            HttpClientHandler handler = new HttpClientHandler();
 
-            if (proxy != null)
+            if (_cachedProxy != null)
             {
-                handler.Proxy = proxy;
+                handler.Proxy = _cachedProxy;
                 handler.UseProxy = true;
+            }
+            else
+            {
+                handler.UseProxy = false;
             }
 
             using (HttpClient httpClient = new HttpClient(handler))
             {
                 httpClient.DefaultRequestHeaders.Authorization =
                     new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
-
 
                 string requrl = $"{SubmissionURL}/{SubmissionID}/fraud?with_metadata=true";
                 string text = "";
@@ -198,17 +299,59 @@ namespace tungstenlabs.integration.resistantai
                         await Task.Delay(delay).ConfigureAwait(false);
 
                         HttpResponseMessage response = await httpClient.GetAsync(requrl).ConfigureAwait(false);
+
+                        // Handle Unauthorized / Forbidden -> refresh token, update TA, retry
+                        if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                            response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            // Refresh token from RAI
+                            AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                            // Update TA server variable RAI-CLIENT-TOKEN
+                            List<string> vars = new List<string>() { RAI_CLIENT_TOKEN };
+                            ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                            var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, vars);
+                            dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(
+                                dict[RAI_CLIENT_TOKEN].Key,
+                                AuthToken.access_token
+                            );
+
+                            Dictionary<string, string> newDict =
+                                dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value);
+
+                            serverVariableHelper.UpdateServerVariables(newDict, TASession, TASDKURL);
+
+                            // Update HttpClient header
+                            httpClient.DefaultRequestHeaders.Authorization =
+                                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                            // Move to next attempt
+                            counter++;
+                            delay += (1000 * counter);
+                            continue;
+                        }
+
                         response.EnsureSuccessStatusCode();
 
                         text = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                     }
                     catch (HttpRequestException ex)
                     {
+                        if (IsProxyAuthError(ex))
+                        {
+                            throw new Exception(
+                                "Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings in TA Server Variables.",
+                                ex
+                            );
+                        }
+
                         if (counter >= max)
                         {
-                            throw new Exception($"Too many HttpRequestExceptions after {counter} retries - {ex.Message}", ex);
+                            throw new Exception(
+                                $"Too many HttpRequestExceptions after {counter} retries - {ex.Message}",
+                                ex
+                            );
                         }
-                        // Log or swallow the exception and retry
                     }
                     catch (Exception ex)
                     {
@@ -226,11 +369,11 @@ namespace tungstenlabs.integration.resistantai
 
                 List<ContentHidingEntry> CoordinatesList = ExtractContentHidingEntries(text, Category);
 
-                // If DrawBoundingBoxesOnImage is async, use await here
-                return DrawBoundingBoxesOnImageAsync(DocID, CoordinatesList, TASDKURL, TASession).Result;
+                // Create new KTA document with bounding boxes and return DocumentId
+                return await DrawBoundingBoxesOnImageAsync(DocID, CoordinatesList, TASDKURL, TASession)
+                    .ConfigureAwait(false);
             }
         }
-
 
         public List<ContentHidingEntry> ExtractContentHidingEntries(string jsonData, string category)
         {
@@ -251,7 +394,7 @@ namespace tungstenlabs.integration.resistantai
                                 int pageId = entry["page_id"]?.ToObject<int>() ?? 0;
                                 string newText = entry["new_text"]?.ToString() ?? "";
 
-                                // ✅ Case 1: bbox is a **single object**
+                                // Case 1: bbox is a single object
                                 if (entry["bbox"] is JObject bbox)
                                 {
                                     contentHidingEntries.Add(new ContentHidingEntry
@@ -264,7 +407,7 @@ namespace tungstenlabs.integration.resistantai
                                         Height = bbox["height"]?.ToObject<float>() ?? 0f
                                     });
                                 }
-                                // ✅ Case 2: bbox is an **array of objects**
+                                // Case 2: bbox is an array of objects
                                 else if (entry["bbox"] is JArray bboxArray)
                                 {
                                     foreach (var bboxEntry in bboxArray)
@@ -290,18 +433,18 @@ namespace tungstenlabs.integration.resistantai
             }
             catch (JsonReaderException ex)
             {
-                Console.WriteLine("JSON Parsing Error: " + ex.Message);
+                
             }
             catch (Exception ex)
             {
-                Console.WriteLine("Unexpected Error: " + ex.Message);
+                
             }
 
             return contentHidingEntries;
         }
+
         public string DrawBoundingBoxesOnImage(string DocID, List<ContentHidingEntry> boundingBoxes, string TASDKURL, string TASession)
         {
-
             byte[] FileArray = GetKTADocumentFileAsTiff(DocID, TASDKURL, TASession);
 
             using (MemoryStream ms = new MemoryStream(FileArray))
@@ -317,16 +460,16 @@ namespace tungstenlabs.integration.resistantai
 
                 for (int i = 0; i < totalPages; i++)
                 {
-                    image.SelectActiveFrame(frameDimension, i); // Select page
+                    image.SelectActiveFrame(frameDimension, i);
 
-                    Bitmap pageBitmap = new Bitmap(image); // Copy current page
+                    Bitmap pageBitmap = new Bitmap(image);
                     using (Graphics g = Graphics.FromImage(pageBitmap))
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(100, Color.Yellow))) // 100/255 transparency
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(100, Color.Yellow)))
                         {
                             foreach (var box in boundingBoxes)
                             {
-                                if (box.PageId == i) // Only process matching page
+                                if (box.PageId == i)
                                 {
                                     float scaleX = (float)(pageBitmap.Width / pdfWidth);
                                     float scaleY = (float)(pageBitmap.Height / pdfHeight);
@@ -342,12 +485,13 @@ namespace tungstenlabs.integration.resistantai
                         }
                     }
 
-                    modifiedPages.Add(pageBitmap); // Store modified page
+                    modifiedPages.Add(pageBitmap);
                 }
+
                 return CreateTADocument(modifiedPages, TASDKURL, TASession);
-                //return SaveMultiPageTiff(modifiedPages); // Return final TIFF
             }
         }
+
         public async Task<string> DrawBoundingBoxesOnImageAsync(string DocID, List<ContentHidingEntry> boundingBoxes, string TASDKURL, string TASession)
         {
             byte[] FileArray = await GetKTADocumentFileAsTiffAsync(DocID, TASDKURL, TASession);
@@ -365,16 +509,16 @@ namespace tungstenlabs.integration.resistantai
 
                 for (int i = 0; i < totalPages; i++)
                 {
-                    image.SelectActiveFrame(frameDimension, i); // Select page
+                    image.SelectActiveFrame(frameDimension, i);
 
-                    Bitmap pageBitmap = new Bitmap(image); // Copy current page
+                    Bitmap pageBitmap = new Bitmap(image);
                     using (Graphics g = Graphics.FromImage(pageBitmap))
                     {
-                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(100, Color.Yellow))) // 100/255 transparency
+                        using (SolidBrush brush = new SolidBrush(Color.FromArgb(100, Color.Yellow)))
                         {
                             foreach (var box in boundingBoxes)
                             {
-                                if (box.PageId == i) // Only process matching page
+                                if (box.PageId == i)
                                 {
                                     float scaleX = (float)(pageBitmap.Width / pdfWidth);
                                     float scaleY = (float)(pageBitmap.Height / pdfHeight);
@@ -390,33 +534,32 @@ namespace tungstenlabs.integration.resistantai
                         }
                     }
 
-                    modifiedPages.Add(pageBitmap); // Store modified page
+                    modifiedPages.Add(pageBitmap);
                 }
 
                 return CreateTADocument(modifiedPages, TASDKURL, TASession);
             }
         }
 
+        #endregion
 
+        #region 
 
         private byte[] GetKTADocumentFileAsTiff(string docID, string ktaSDKUrl, string sessionID)
         {
             byte[] result = new byte[1];
             byte[] buffer = new byte[4096];
-            //string fileType = "pdf";
             string status = "OK";
 
             try
             {
-                //Setting the URi and calling the get document API
                 var KTAGetDocumentFile = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetDocumentFile2";
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(KTAGetDocumentFile);
-                httpWebRequest.Proxy = null;  
+                httpWebRequest.Proxy = null;
 
                 httpWebRequest.ContentType = "application/json";
                 httpWebRequest.Method = "POST";
 
-                // CONSTRUCT JSON Payload
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
                     string json = "{\"sessionId\":\"" + sessionID + "\",\"reportingData\": {\"Station\": \"\", \"MarkCompleted\": false }, \"documentId\":\"" + docID + "\", \"documentFileOptions\": { \"FileType\": \".tiff\", \"IncludeAnnotations\": 0 }}";
@@ -427,7 +570,7 @@ namespace tungstenlabs.integration.resistantai
 
                 HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
                 Stream receiveStream = httpWebResponse.GetResponseStream();
-                Encoding encode = System.Text.Encoding.GetEncoding("utf-8");
+                Encoding encode = Encoding.GetEncoding("utf-8");
                 StreamReader readStream = new StreamReader(receiveStream, encode);
                 int streamContentLength = unchecked((int)httpWebResponse.ContentLength);
 
@@ -455,7 +598,6 @@ namespace tungstenlabs.integration.resistantai
             }
         }
 
-
         private async Task<byte[]> GetKTADocumentFileAsTiffAsync(string docID, string ktaSDKUrl, string sessionID)
         {
             byte[] result = Array.Empty<byte>();
@@ -468,9 +610,11 @@ namespace tungstenlabs.integration.resistantai
             {
                 try
                 {
-                    var handler = new HttpClientHandler();
-                    handler.Proxy = null;        
-                    handler.UseProxy = false;      
+                    var handler = new HttpClientHandler
+                    {
+                        Proxy = null,
+                        UseProxy = false
+                    };
 
                     using (HttpClient httpClient = new HttpClient(handler))
                     {
@@ -502,7 +646,7 @@ namespace tungstenlabs.integration.resistantai
                     {
                         throw new Exception($"Failed to get KTA document after {maxAttempts} attempts. Last error: {ex.Message}", ex);
                     }
-                    // else swallow and retry after delay
+                    // else swallow and retry
                 }
 
                 await Task.Delay(delayMs).ConfigureAwait(false);
@@ -511,57 +655,6 @@ namespace tungstenlabs.integration.resistantai
 
             throw new Exception("Could not retrieve the KTA document as TIFF after retries.");
         }
-
-        private IWebProxy GetProxyIfEnabled(string taSdkUrl, string taSessionId)
-        {
-            try
-            {
-                ServerVariableHelper helper = new ServerVariableHelper();
-
-                List<string> vars = new List<string>()
-                {
-                    RAI_PROXY_ENABLE,
-                    RAI_PROXY_URL,
-                    RAI_PROXY_USERNAME,
-                    RAI_PROXY_PASSWORD
-                };
-
-                var sv = helper.GetServerVariables(taSessionId, taSdkUrl, vars);
-
-                bool proxyEnabled = sv[RAI_PROXY_ENABLE].Value.ToLower() == "true";
-                string proxyUrl = sv[RAI_PROXY_URL].Value;
-                string proxyUser = sv[RAI_PROXY_USERNAME].Value;
-                string proxyPass = sv[RAI_PROXY_PASSWORD].Value;
-
-                if (!proxyEnabled || string.IsNullOrWhiteSpace(proxyUrl))
-                    return null;
-
-                //WebProxy proxy = new WebProxy(proxyUrl);
-                WebProxy proxy = new WebProxy(proxyUrl)
-                {
-                    BypassProxyOnLocal = false,   // do NOT bypass local or anything else
-                    BypassList = Array.Empty<string>()
-                };
-
-
-                if (!string.IsNullOrWhiteSpace(proxyUser))
-                {
-                    proxy.Credentials = new NetworkCredential(proxyUser, proxyPass);
-                }
-                else
-                {
-                    //proxy.Credentials = CredentialCache.DefaultCredentials;
-                    proxy.UseDefaultCredentials = true;
-                }
-
-                return proxy;
-            }
-            catch
-            {
-                return null;
-            }
-        }
-
 
         private string CreateTADocument(List<Bitmap> pages, string ktaSDKUrl, string sessionID)
         {
@@ -578,32 +671,29 @@ namespace tungstenlabs.integration.resistantai
                 request.ContentType = "application/json";
                 request.Method = "POST";
 
-                // Prepare PageDataList dynamically for each Bitmap (image)
                 var pageDataList = pages.Select(page => new
                 {
-                    Base64Data = Convert.ToBase64String(BitmapToByteArray(page, ImageFormat.Tiff)), // Convert each page to Base64
-                    MimeType = "image/tiff", // MIME type for the page, can be dynamic if needed
-                    Data = (object)null, // Data is null since we are using Base64Data
-                    RuntimeFields = (object)null // Optional fields, can be added if needed
+                    Base64Data = Convert.ToBase64String(BitmapToByteArray(page, ImageFormat.Tiff)),
+                    MimeType = "image/tiff",
+                    Data = (object)null,
+                    RuntimeFields = (object)null
                 }).ToArray();
 
-                // Construct JSON payload
                 var requestPayload = new
                 {
                     sessionId = sessionID,
-                    reportingData = (object)null,  // Optional
+                    reportingData = (object)null,
                     parentId = "",
-                    runtimeFolderFields = (object)null,  // Optional
+                    runtimeFolderFields = (object)null,
                     folderTypeId = "",
                     documentDataInput = new
                     {
-                        PageDataList = pageDataList, // Populate with all pages
-                        MimeType = "image/tiff"  // Overall MIME type for the document
+                        PageDataList = pageDataList,
+                        MimeType = "image/tiff"
                     },
                     insertIndex = 0
                 };
 
-                // Serialize the object to JSON
                 string json = JsonConvert.SerializeObject(requestPayload);
 
                 using (var streamWriter = new StreamWriter(request.GetRequestStream()))
@@ -615,7 +705,7 @@ namespace tungstenlabs.integration.resistantai
                 using (Stream responseStream = response.GetResponseStream())
                 using (StreamReader reader = new StreamReader(responseStream))
                 {
-                    result = JObject.Parse(reader.ReadToEnd()); // Return the raw JSON response
+                    result = JObject.Parse(reader.ReadToEnd());
                 }
 
                 if (result["d"] != null)
@@ -625,7 +715,6 @@ namespace tungstenlabs.integration.resistantai
                 }
 
                 return returnDocumentId;
-
             }
             catch (Exception ex)
             {
@@ -633,17 +722,15 @@ namespace tungstenlabs.integration.resistantai
             }
         }
 
-
-        // Helper method to convert Bitmap to byte array
         private byte[] BitmapToByteArray(Bitmap bitmap, ImageFormat format)
         {
             using (var memoryStream = new MemoryStream())
             {
-                bitmap.Save(memoryStream, format);  // Save the bitmap as a stream in the specified format
-                return memoryStream.ToArray();  // Return the byte array
+                bitmap.Save(memoryStream, format);
+                return memoryStream.ToArray();
             }
         }
 
-
+        #endregion
     }
 }
