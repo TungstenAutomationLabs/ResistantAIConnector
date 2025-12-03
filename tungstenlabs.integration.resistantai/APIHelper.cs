@@ -670,6 +670,7 @@ namespace tungstenlabs.integration.resistantai
 
         public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, String TASDKURL, String TASession)
         {
+            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
             return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession).GetAwaiter().GetResult();
         }
 
