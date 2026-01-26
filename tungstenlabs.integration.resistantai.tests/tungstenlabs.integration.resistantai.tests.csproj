@@ -118,10 +118,6 @@
       <Private>True</Private>
     </Reference>
     <Reference Include="System.Xml" />
-    <Reference Include="tungstenlabs.integration.resistantai, Version=1.0.0.27735, Culture=neutral, PublicKeyToken=3b2cf567d3ffd915, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\tungstenlabs.integration.resistantai\bin\Debug\tungstenlabs.integration.resistantai.dll</HintPath>
-    </Reference>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="APIHelperTests.cs" />
@@ -135,6 +131,12 @@
   <ItemGroup>
     <Analyzer Include="..\packages\MSTest.Analyzers.3.8.3\analyzers\dotnet\cs\MSTest.Analyzers.CodeFixes.dll" />
     <Analyzer Include="..\packages\MSTest.Analyzers.3.8.3\analyzers\dotnet\cs\MSTest.Analyzers.dll" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\tungstenlabs.integration.resistantai\tungstenlabs.integration.resistantai.csproj">
+      <Project>{ff2d021b-7f9f-432c-b14f-d0a62a0068e0}</Project>
+      <Name>tungstenlabs.integration.resistantai</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets" Condition="Exists('$(VSToolsPath)\TeamTest\Microsoft.TestTools.targets')" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />

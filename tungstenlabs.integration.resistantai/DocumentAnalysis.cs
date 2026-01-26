@@ -18,6 +18,7 @@ using Newtonsoft.Json.Linq;
 using Color = System.Drawing.Color;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.Serialization;
 
 namespace tungstenlabs.integration.resistantai
 {
@@ -31,41 +32,107 @@ namespace tungstenlabs.integration.resistantai
         public float Height { get; set; }
     }
 
+    // Keep the same DTO shape as we used in ResistantAIConnector
+    [DataContract]
+    public class DO_ProxySettings
+    {
+        [DataMember]
+        public string Url { get; set; }
+
+        [DataMember]
+        public string Username { get; set; }
+
+        [DataMember]
+        public string Password { get; set; }
+    }
+
     public class DocumentAnalysis
     {
-        
         public const string RAI_PROXY_ENABLE = "RAI-PROXY-ENABLE";
         public const string RAI_PROXY_URL = "RAI-PROXY-URL";
         public const string RAI_PROXY_USERNAME = "RAI-PROXY-USERNAME";
         public const string RAI_PROXY_PASSWORD = "RAI-PROXY-PASSWORD";
 
-        
         public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
 
         private IWebProxy _cachedProxy = null;
         private DO_AuthCodeParamteres AuthToken { get; set; }
 
+        // =========================================================
+        // BuildProxyFromSettings (same pattern as ResistantAIConnector)
+        // NOTE: per your instruction, no other logic is changed.
+        // =========================================================
+        private IWebProxy BuildProxyFromSettings(DO_ProxySettings settings)
+        {
+            if (settings == null)
+                return null;
+
+           
+
+            if (string.IsNullOrWhiteSpace(settings.Url))
+                return null;
+
+            WebProxy proxy = new WebProxy(settings.Url)
+            {
+                BypassProxyOnLocal = false,
+                BypassList = Array.Empty<string>()
+            };
+
+            if (!string.IsNullOrWhiteSpace(settings.Username))
+            {
+                proxy.Credentials = new NetworkCredential(settings.Username, settings.Password ?? string.Empty);
+            }
+            else
+            {
+                proxy.UseDefaultCredentials = true;
+            }
+
+            return proxy;
+        }
+
         /// <summary>
-        /// Entry point – gets RAI token from TA, aligns proxy with APIHelper, fetches metadata,
+        /// Entry point (NO PROXY) – gets RAI token from TA, fetches metadata,
         /// draws bounding boxes on the TIFF from KTA, and creates a new KTA document.
         /// Returns the new KTA DocumentId.
         /// </summary>
-        public string GetDocumentWithBoundingBoxes(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
+        public string GetDocumentWithBoundingBoxes(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID,
+                            string TASDKURL, string TASession, string SubmissionID, string Category) 
         {
-            
-            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
+            // NO PROXY contract
+            _cachedProxy = null;
 
-            
+            // Token comes from TA (unchanged)
             AuthToken = GetTokenFromTA(TASession, TASDKURL);
 
             if (AuthToken == null || string.IsNullOrEmpty(AuthToken.access_token))
                 throw new Exception("Auth Token is empty!");
 
-            
-            return FetchResultsWithMetadataAsync(AuthenticationURL, SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category, ClientID, ClientSecret ).GetAwaiter().GetResult();
+            return FetchResultsWithMetadataAsync(AuthenticationURL, SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category, ClientID, ClientSecret).GetAwaiter().GetResult();
         }
 
-        #region Token + Proxy handling (aligned with APIHelper.cs)
+        /// <summary>
+        /// Entry point (WITH PROXY via caller-provided settings).
+        /// Returns the new KTA DocumentId.
+        /// </summary>
+        public string GetDocumentWithBoundingBoxes1(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string DocID,
+                                string TASDKURL, string TASession, string SubmissionID, string Category, DO_ProxySettings proxySettings)
+        {
+            _cachedProxy = BuildProxyFromSettings(proxySettings);
+
+            // Enforce proxy presence for proxy entry point
+            if (_cachedProxy == null)
+                throw new ArgumentException("Proxy settings are required for GetDocumentWithBoundingBoxes1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
+
+            // Token comes from TA (unchanged)
+            AuthToken = GetTokenFromTA(TASession, TASDKURL);
+
+            if (AuthToken == null || string.IsNullOrEmpty(AuthToken.access_token))
+                throw new Exception("Auth Token is empty!");
+
+            return FetchResultsWithMetadataAsync(AuthenticationURL, SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category, ClientID, ClientSecret).GetAwaiter().GetResult();
+        }
+
+        #region Token + Proxy handling (existing logic kept)
 
         private DO_AuthCodeParamteres RefreshAuthToken(string URL, string ClientID, string ClientSecret)
         {
@@ -188,12 +255,8 @@ namespace tungstenlabs.integration.resistantai
 
         #endregion
 
-        #region Fetch RAI results + draw bounding boxes
+        #region Fetch RAI results + draw bounding boxes (existing logic kept)
 
-        /// <summary>
-        /// Old synchronous version kept for compatibility (still uses WebRequest).
-        /// Not used by GetDocumentWithBoundingBoxes, which uses the async version.
-        /// </summary>
         private string FetchResultsWithMetadata(string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
         {
             if (AuthToken == null || AuthToken.access_token == "")
@@ -254,15 +317,8 @@ namespace tungstenlabs.integration.resistantai
             return DrawBoundingBoxesOnImage(DocID, CoordinatesList, TASDKURL, TASession);
         }
 
-        /// <summary>
-        /// Async version aligned with APIHelper FetchResultsAsync:
-        /// - Uses HttpClient + HttpClientHandler
-        /// - Uses _cachedProxy
-        /// - Retries with backoff
-        /// - Handles proxy 407 and token refresh (401/403) via RefreshAuthToken + TA update
-        /// Returns new KTA DocumentId.
-        /// </summary>
-        private async Task<string> FetchResultsWithMetadataAsync(string AuthenticationURL, string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category, string ClientID, string ClientSecret)
+        private async Task<string> FetchResultsWithMetadataAsync(string AuthenticationURL, string SubmissionURL, string DocID, string TASDKURL, string TASession,
+                                    string SubmissionID, string Category, string ClientID, string ClientSecret)
         {
             if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
             {
@@ -431,13 +487,13 @@ namespace tungstenlabs.integration.resistantai
                     }
                 }
             }
-            catch (JsonReaderException ex)
+            catch (JsonReaderException)
             {
-                
+                // intentionally left blank (as in your original)
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                
+                // intentionally left blank (as in your original)
             }
 
             return contentHidingEntries;
@@ -448,15 +504,15 @@ namespace tungstenlabs.integration.resistantai
             byte[] FileArray = GetKTADocumentFileAsTiff(DocID, TASDKURL, TASession);
 
             using (MemoryStream ms = new MemoryStream(FileArray))
-            using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms))
+            using (Image image = Image.FromStream(ms))
             {
                 FrameDimension frameDimension = new FrameDimension(image.FrameDimensionsList[0]);
                 int totalPages = image.GetFrameCount(frameDimension);
 
                 List<Bitmap> modifiedPages = new List<Bitmap>();
 
-                double pdfWidth = 612;  // Standard PDF width
-                double pdfHeight = 792; // Standard PDF height
+                double pdfWidth = 612;
+                double pdfHeight = 792;
 
                 for (int i = 0; i < totalPages; i++)
                 {
@@ -497,15 +553,15 @@ namespace tungstenlabs.integration.resistantai
             byte[] FileArray = await GetKTADocumentFileAsTiffAsync(DocID, TASDKURL, TASession);
 
             using (MemoryStream ms = new MemoryStream(FileArray))
-            using (System.Drawing.Image image = System.Drawing.Image.FromStream(ms))
+            using (Image image = Image.FromStream(ms))
             {
                 FrameDimension frameDimension = new FrameDimension(image.FrameDimensionsList[0]);
                 int totalPages = image.GetFrameCount(frameDimension);
 
                 List<Bitmap> modifiedPages = new List<Bitmap>();
 
-                double pdfWidth = 612;  // Standard PDF width
-                double pdfHeight = 792; // Standard PDF height
+                double pdfWidth = 612;
+                double pdfHeight = 792;
 
                 for (int i = 0; i < totalPages; i++)
                 {
@@ -543,7 +599,7 @@ namespace tungstenlabs.integration.resistantai
 
         #endregion
 
-        #region 
+        #region
 
         private byte[] GetKTADocumentFileAsTiff(string docID, string ktaSDKUrl, string sessionID)
         {
@@ -646,7 +702,6 @@ namespace tungstenlabs.integration.resistantai
                     {
                         throw new Exception($"Failed to get KTA document after {maxAttempts} attempts. Last error: {ex.Message}", ex);
                     }
-                    // else swallow and retry
                 }
 
                 await Task.Delay(delayMs).ConfigureAwait(false);

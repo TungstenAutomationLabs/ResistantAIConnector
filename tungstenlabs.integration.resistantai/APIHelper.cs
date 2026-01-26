@@ -64,32 +64,24 @@ using Newtonsoft.Json.Linq;
 
 namespace tungstenlabs.integration.resistantai
 {
+  
+    
 
-    //authentication dataobject
+    // authentication dataobject
     [DataContract]
     internal class DO_AuthCodeParamteres
     {
-        [DataMember]
-        public string token_type { get; set; }
-
-        [DataMember]
-        public string expires_in { get; set; }
-
-        [DataMember]
-        public string access_token { get; set; }
-
-        [DataMember]
-        public string scope { get; set; }
+        [DataMember] public string token_type { get; set; }
+        [DataMember] public string expires_in { get; set; }
+        [DataMember] public string access_token { get; set; }
+        [DataMember] public string scope { get; set; }
     }
 
     [DataContract]
     internal class DO_Submission
     {
-        [DataMember]
-        public string upload_url { get; set; }
-
-        [DataMember]
-        public string submission_id { get; set; }
+        [DataMember] public string upload_url { get; set; }
+        [DataMember] public string submission_id { get; set; }
     }
 
     public class ResistantAIConnector
@@ -100,21 +92,55 @@ namespace tungstenlabs.integration.resistantai
         public const string RAI_CLIENT_SECRET = "RAI-CLIENT-SECRET";
         public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
         public const string RAI_ENABLE_DECISION = "RAI-ENABLE-DECISION";
+
+        // Still present for backwards compatibility / internal use,
+        // but NOT used by the "no-proxy" entry points anymore.
         public const string RAI_PROXY_ENABLE = "RAI-PROXY-ENABLE";
         public const string RAI_PROXY_URL = "RAI-PROXY-URL";
         public const string RAI_PROXY_USERNAME = "RAI-PROXY-USERNAME";
         public const string RAI_PROXY_PASSWORD = "RAI-PROXY-PASSWORD";
+
         private IWebProxy _cachedProxy = null;
 
         private DO_AuthCodeParamteres AuthToken { get; set; }
 
-        private DO_AuthCodeParamteres RefreshAuthToken(String URL, String ClientID, String ClientSecret)
+        // =========================================================
+        // NEW: build proxy from caller-provided settings
+        // =========================================================
+        private IWebProxy BuildProxyFromSettings(DO_ProxySettings settings)
         {
-            // Prepare Basic Auth header
+            if (settings == null)
+                return null;
+
+            
+
+            if (string.IsNullOrWhiteSpace(settings.Url))
+                return null;
+
+            WebProxy proxy = new WebProxy(settings.Url)
+            {
+                BypassProxyOnLocal = false,
+                BypassList = Array.Empty<string>()
+            };
+
+            if (!string.IsNullOrWhiteSpace(settings.Username))
+            {
+                proxy.Credentials = new NetworkCredential(settings.Username, settings.Password ?? string.Empty);
+            }
+            else
+            {
+                // If no username provided, fallback to default credentials (matches your existing behavior)
+                proxy.UseDefaultCredentials = true;
+            }
+
+            return proxy;
+        }
+
+        private DO_AuthCodeParamteres RefreshAuthToken(string URL, string ClientID, string ClientSecret)
+        {
             string credentials = string.Format("{0}:{1}", ClientID, ClientSecret);
             string base64Credentials = Convert.ToBase64String(Encoding.ASCII.GetBytes(credentials));
 
-            // Create request
             HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(URL);
             httpWebRequest.ContentType = "application/x-www-form-urlencoded";
             httpWebRequest.Accept = "application/json";
@@ -122,52 +148,45 @@ namespace tungstenlabs.integration.resistantai
             httpWebRequest.Method = "POST";
 
             if (_cachedProxy != null)
-            {
                 httpWebRequest.Proxy = _cachedProxy;
-            }
 
-
-            // Payload
             string requestBody = "grant_type=client_credentials&scope=submissions.read submissions.write";
             byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
             httpWebRequest.ContentLength = requestBodyBytes.Length;
 
-            // Write body
             using (var requestStream = httpWebRequest.GetRequestStream())
             {
                 requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
                 requestStream.Flush();
             }
 
-            // Read response
-            String responseText = String.Empty;
-            DO_AuthCodeParamteres bsObj2;
-
+            string responseText;
             HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
             var encoding = ASCIIEncoding.UTF8;
 
-            using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
+            using (var reader = new StreamReader(httpWebResponse.GetResponseStream(), encoding))
             {
                 responseText = reader.ReadToEnd();
             }
 
-            // Deserialize JSON
+            DO_AuthCodeParamteres tokenObj;
             using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
             {
                 DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_AuthCodeParamteres));
-                bsObj2 = (DO_AuthCodeParamteres)deserializer.ReadObject(ms);
+                tokenObj = (DO_AuthCodeParamteres)deserializer.ReadObject(ms);
             }
 
-            return bsObj2;
+            return tokenObj;
         }
 
-
+        // =========================================================
+        // Existing TA proxy retrieval (kept, but not used by no-proxy entry points)
+        // =========================================================
         private IWebProxy GetProxyIfEnabled(string taSessionId, string taSdkUrl)
         {
             try
             {
                 ServerVariableHelper helper = new ServerVariableHelper();
-
                 List<string> vars = new List<string>()
                 {
                     RAI_PROXY_ENABLE,
@@ -186,13 +205,11 @@ namespace tungstenlabs.integration.resistantai
                 if (!proxyEnabled || string.IsNullOrWhiteSpace(proxyUrl))
                     return null;
 
-                //WebProxy proxy = new WebProxy(proxyUrl);
                 WebProxy proxy = new WebProxy(proxyUrl)
                 {
-                    BypassProxyOnLocal = false,   // do NOT bypass local or anything else
+                    BypassProxyOnLocal = false,
                     BypassList = Array.Empty<string>()
                 };
-
 
                 if (!string.IsNullOrWhiteSpace(proxyUser))
                 {
@@ -200,10 +217,9 @@ namespace tungstenlabs.integration.resistantai
                 }
                 else
                 {
-                    //proxy.Credentials = CredentialCache.DefaultCredentials;
                     proxy.UseDefaultCredentials = true;
-                }                
-                
+                }
+
                 return proxy;
             }
             catch
@@ -211,8 +227,6 @@ namespace tungstenlabs.integration.resistantai
                 return null;
             }
         }
-
-
 
         private DO_AuthCodeParamteres GetTokenFromTA(string taSessionId, string taSdkUrl)
         {
@@ -223,19 +237,17 @@ namespace tungstenlabs.integration.resistantai
             return new DO_AuthCodeParamteres() { access_token = sv[RAI_CLIENT_TOKEN].Value };
         }
 
-        private DO_Submission Submission(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, string taSessionId, string taSdkUrl, string queryId)
+        private DO_Submission Submission(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
+            string taSessionId, string taSdkUrl, string queryId)
         {
             bool shouldRetry = false;
             do
             {
-                try 
+                try
                 {
                     shouldRetry = false;
-                     bool enableDecisionValue = RetrieveEnableDecisionValue(taSessionId, taSdkUrl);
-                    
-                    //Setting the URi and calling the get document API
-                    //DO_AuthCodeParamteres ReturnParamteres = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
-                    //AuthToken = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
+                    bool enableDecisionValue = RetrieveEnableDecisionValue(taSessionId, taSdkUrl);
+
                     HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(SubmissionURL);
                     httpWebRequest.ContentType = "application/json";
                     httpWebRequest.Accept = "*/*";
@@ -243,12 +255,7 @@ namespace tungstenlabs.integration.resistantai
                     httpWebRequest.Method = "POST";
 
                     if (_cachedProxy != null)
-                    {
                         httpWebRequest.Proxy = _cachedProxy;
-                    }
-
-                    // CONSTRUCT JSON Payload
-                    //string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":{enableDecisionValue.ToString().ToLower()},\"enable_submission_characteristics\":false}";
 
                     string requestBody = $@"{{
                         ""query_id"": ""{queryId}"",
@@ -257,35 +264,32 @@ namespace tungstenlabs.integration.resistantai
                         ""enable_submission_characteristics"": false
                     }}";
 
-
-                    // Convert the request body string to bytes
                     byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
-                    // Set the ContentLength of the request
                     httpWebRequest.ContentLength = requestBodyBytes.Length;
-                    // Write the request body to the request stream
+
                     using (var requestStream = httpWebRequest.GetRequestStream())
                     {
                         requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
                         requestStream.Flush();
                     }
-                    //Reading response from API
-                    String responseText = String.Empty;
-                    DO_Submission bsObj2;
+
+                    string responseText;
+                    DO_Submission submissionObj;
+
                     HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
                     var encoding = ASCIIEncoding.UTF8;
-                    using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
+                    using (var reader = new StreamReader(httpWebResponse.GetResponseStream(), encoding))
                     {
                         responseText = reader.ReadToEnd();
                     }
-                    //deserialize JSON string to its key value pairs
+
                     using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
                     {
-                        // Deserialization from JSON
                         DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_Submission));
-                        bsObj2 = (DO_Submission)deserializer.ReadObject(ms);
+                        submissionObj = (DO_Submission)deserializer.ReadObject(ms);
                     }
-                    //String[] ReturnParamteres = { bsObj2.access_token, bsObj2.expires_in, bsObj2.token_type, bsObj2.scope };
-                    return bsObj2;
+
+                    return submissionObj;
                 }
                 catch (WebException ex) when (ex.Status == WebExceptionStatus.ProtocolError && ex.Response is HttpWebResponse httpResponse)
                 {
@@ -293,12 +297,12 @@ namespace tungstenlabs.integration.resistantai
                     {
                         shouldRetry = true;
                         AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
-                        List<string> vars = new List<string>() { RAI_CLIENT_TOKEN };
 
+                        List<string> vars = new List<string>() { RAI_CLIENT_TOKEN };
                         ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
                         var dict = serverVariableHelper.GetServerVariables(taSessionId, taSdkUrl, vars);
-                        dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
 
+                        dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
                         Dictionary<string, string> newDict = dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value);
                         serverVariableHelper.UpdateServerVariables(newDict, taSessionId, taSdkUrl);
                     }
@@ -307,11 +311,10 @@ namespace tungstenlabs.integration.resistantai
                         throw new WebException($"HTTP Error: {httpResponse.StatusCode}", ex);
                     }
                 }
-                
                 catch (WebException ex) when (ex.Response is HttpWebResponse httpResponse &&
-                               httpResponse.StatusCode == HttpStatusCode.ProxyAuthenticationRequired)
+                                             httpResponse.StatusCode == HttpStatusCode.ProxyAuthenticationRequired)
                 {
-                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings in TA Server Variables.", ex);
+                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy credentials.", ex);
                 }
                 catch (WebException ex)
                 {
@@ -333,8 +336,6 @@ namespace tungstenlabs.integration.resistantai
             return null;
         }
 
-        
-
         private bool RetrieveEnableDecisionValue(string taSessionId, string taSdkUrl)
         {
             try
@@ -342,160 +343,90 @@ namespace tungstenlabs.integration.resistantai
                 List<string> vars = new List<string>() { RAI_ENABLE_DECISION };
                 ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
                 var sv = serverVariableHelper.GetServerVariables(taSessionId, taSdkUrl, vars);
-                if (sv.ContainsKey(RAI_ENABLE_DECISION))
-                {
-                    return sv[RAI_ENABLE_DECISION].Value.ToLower() == "true";
-                }
-                else
-                {
-                    return false; // Default value if not found
-                }
 
+                if (sv.ContainsKey(RAI_ENABLE_DECISION))
+                    return sv[RAI_ENABLE_DECISION].Value.ToLower() == "true";
+
+                return false;
             }
-            catch (Exception ex)
+            catch
             {
                 return false;
             }
-        }
-
-        private DO_Submission UploadFile(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret)
-        {
-            //Setting the URi and calling the get document API
-            //DO_AuthCodeParamteres ReturnParamteres = GetAuthToken(AuthenticationURL, ClientID, ClientSecret);
-            HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(SubmissionURL);
-            httpWebRequest.ContentType = "application/json";
-            httpWebRequest.Accept = "*/*";
-            //ktaHttpWebRequest.Connection = "keep-alive";
-            httpWebRequest.Headers.Add(HttpRequestHeader.Authorization, string.Format("Bearer {0}", AuthToken.access_token));
-            httpWebRequest.Method = "POST";
-            // CONSTRUCT JSON Payload
-            string requestBody = "{\"query_id\":\"string\",\"pipeline_configuration\":\"FRAUD_ONLY\",\"enable_decision\":false,\"enable_submission_characteristics\":false}";
-
-            // Convert the request body string to bytes
-            byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
-            // Set the ContentLength of the request
-            httpWebRequest.ContentLength = requestBodyBytes.Length;
-            // Write the request body to the request stream
-            using (var requestStream = httpWebRequest.GetRequestStream())
-            {
-                requestStream.Write(requestBodyBytes, 0, requestBodyBytes.Length);
-                requestStream.Flush();
-            }
-            //Reading response from API
-            String responseText = String.Empty;
-            DO_Submission bsObj2;
-            HttpWebResponse ktaHttpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-            var encoding = ASCIIEncoding.UTF8;
-            using (var reader = new System.IO.StreamReader(ktaHttpWebResponse.GetResponseStream(), encoding))
-            {
-                responseText = reader.ReadToEnd();
-            }
-            //deserialize JSON string to its key value pairs
-            using (var ms = new MemoryStream(Encoding.Unicode.GetBytes(responseText)))
-            {
-                // Deserialization from JSON
-                DataContractJsonSerializer deserializer = new DataContractJsonSerializer(typeof(DO_Submission));
-                bsObj2 = (DO_Submission)deserializer.ReadObject(ms);
-            }
-            //String[] ReturnParamteres = { bsObj2.access_token, bsObj2.expires_in, bsObj2.token_type, bsObj2.scope };
-            return bsObj2;
         }
 
         private byte[] GetKTADocumentFile(string docID, string ktaSDKUrl, string sessionID)
         {
             byte[] result = new byte[1];
             byte[] buffer = new byte[4096];
-            //string fileType = "pdf";
-            string status = "OK";
 
- //           try
- //           {
-                //Setting the URi and calling the get document API
-                var KTAGetDocumentFile = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetDocumentFile2";
-                HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(KTAGetDocumentFile);
+            var KTAGetDocumentFile = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetDocumentFile2";
+            HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(KTAGetDocumentFile);
 
-                httpWebRequest.Proxy = null;
-                httpWebRequest.ContentType = "application/json";
-                httpWebRequest.Method = "POST";
+            httpWebRequest.Proxy = null;
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
 
-                // CONSTRUCT JSON Payload
-                using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            {
+                string json = "{\"sessionId\":\"" + sessionID + "\",\"reportingData\": {\"Station\": \"\", \"MarkCompleted\": false }, \"documentId\":\"" + docID + "\", \"documentFileOptions\": { \"FileType\": \"\", \"IncludeAnnotations\": 0 } }";
+                streamWriter.Write(json);
+                streamWriter.Flush();
+            }
+
+            HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
+
+            // NOTE: left "as-is" per your request, even though it reads GetResponseStream twice in earlier versions.
+            // Here it's only used once.
+            using (Stream responseStream = httpWebResponse.GetResponseStream())
+            using (MemoryStream memoryStream = new MemoryStream())
+            {
+                int count = 0;
+                do
                 {
-                    string json = "{\"sessionId\":\"" + sessionID + "\",\"reportingData\": {\"Station\": \"\", \"MarkCompleted\": false }, \"documentId\":\"" + docID + "\", \"documentFileOptions\": { \"FileType\": \"\", \"IncludeAnnotations\": 0 } }";
-                    streamWriter.Write(json);
-                    streamWriter.Flush();
-                }
+                    count = responseStream.Read(buffer, 0, buffer.Length);
+                    memoryStream.Write(buffer, 0, count);
+                } while (count != 0);
 
-                HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                Stream receiveStream = httpWebResponse.GetResponseStream();
-                Encoding encode = System.Text.Encoding.GetEncoding("utf-8");
-                StreamReader readStream = new StreamReader(receiveStream, encode);
-                int streamContentLength = unchecked((int)httpWebResponse.ContentLength);
+                result = memoryStream.ToArray();
+            }
 
-                using (Stream responseStream = httpWebResponse.GetResponseStream())
-                {
-                    using (MemoryStream memoryStream = new MemoryStream())
-                    {
-                        int count = 0;
-                        do
-                        {
-                            count = responseStream.Read(buffer, 0, buffer.Length);
-                            memoryStream.Write(buffer, 0, count);
-                        } while (count != 0);
-
-                        result = memoryStream.ToArray();
-                    }
-                }
-
-                return result;
-            //}
-            //catch (Exception ex)
-            //{
-            //    status = "An error occured: " + ex.ToString();
-            //    return result;
-            //}
+            return result;
         }
 
-        private String[] UploadFiles(String AuthenticationURL, String SubmissionURL, String ClientID, String ClientSecret, String QueryId, String DocID, String TASDKURL, String TASession)
+        private string[] UploadFiles(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
+            string QueryId, string DocID, string TASDKURL, string TASession)
         {
             AuthToken = GetTokenFromTA(TASession, TASDKURL);
             DO_Submission objSubmission = new DO_Submission();
+
             try
-            {   //calling authorization and submission API CAlls and get SubmissionID and UploadURl in return
+            {
                 objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL, QueryId);
+
                 byte[] FileArray = GetKTADocumentFile(DocID, TASDKURL, TASession);
+
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(objSubmission.upload_url);
                 httpWebRequest.ContentType = "application/octet-stream";
                 httpWebRequest.ContentLength = FileArray.Length;
                 httpWebRequest.Method = "PUT";
 
-
                 if (_cachedProxy != null)
-                {
                     httpWebRequest.Proxy = _cachedProxy;
-                }
 
-                // CONSTRUCT JSON Payload
                 using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
                 {
                     streamWriter.BaseStream.Write(FileArray, 0, FileArray.Length);
                     streamWriter.Flush();
                 }
-                //Reading response from API
-                String responseText = String.Empty;
+
                 HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
-                var encoding = ASCIIEncoding.UTF8;
-                using (var reader = new System.IO.StreamReader(httpWebResponse.GetResponseStream(), encoding))
-                {
-                    responseText = reader.ReadToEnd();
-                }
-                //Return ARray response = OK, OK, SubmissionID
+
                 string[] Returnarray = { httpWebResponse.StatusCode.ToString(), httpWebResponse.StatusDescription.ToString(), objSubmission.submission_id };
                 return Returnarray;
             }
             catch (Exception e)
             {
-                
                 string[] arrayError = { "ERROR", e.ToString(), objSubmission.submission_id };
                 return arrayError;
             }
@@ -506,13 +437,11 @@ namespace tungstenlabs.integration.resistantai
             if (string.IsNullOrEmpty(AuthToken.access_token))
                 throw new Exception("Auth Token is empty!");
 
-          
-          
             HttpClientHandler handler = new HttpClientHandler();
 
             if (_cachedProxy != null)
             {
-                handler.Proxy = _cachedProxy;   // Proxy URL + credentials already set in _cachedProxy
+                handler.Proxy = _cachedProxy;
                 handler.UseProxy = true;
             }
             else
@@ -521,9 +450,7 @@ namespace tungstenlabs.integration.resistantai
             }
 
             HttpClient httpClient = new HttpClient(handler);
-            
 
-            // Set Authorization header
             httpClient.DefaultRequestHeaders.Authorization =
                 new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
 
@@ -544,21 +471,17 @@ namespace tungstenlabs.integration.resistantai
 
                     result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
                 }
-
                 catch (HttpRequestException ex) when (IsProxyAuthError(ex))
                 {
-                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings.", ex);
+                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
                 }
                 catch (HttpRequestException ex)
                 {
                     if (attempt >= maxAttempts)
                         throw new Exception($"Too many failures (attempt {attempt})", ex);
-
-                    // else retry
                 }
 
-
-                delayMs += 1000 * attempt;  // linear back-off
+                delayMs += 1000 * attempt;
                 attempt++;
             }
 
@@ -568,10 +491,7 @@ namespace tungstenlabs.integration.resistantai
             return result;
         }
 
-
-
-
-        private async Task<string[]> FetchAdaptiveResultAsync(string submissionUrl, string submissionId, int maxAttempts, String TASDKURL, String TASession)
+        private async Task<string[]> FetchAdaptiveResultAsync(string submissionUrl, string submissionId, int maxAttempts, string TASDKURL, string TASession)
         {
             var handler = new HttpClientHandler();
 
@@ -630,13 +550,12 @@ namespace tungstenlabs.integration.resistantai
                     {
                         result[0] = resultJson["decision"]?.ToString();
                         result[1] = resultJson["reason"]?["sub_reason"]?["label"]?.ToString();
-                        break; // Got result, exit loop
+                        break;
                     }
                 }
-                
                 catch (HttpRequestException ex) when (IsProxyAuthError(ex))
                 {
-                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify RAI-PROXY-USERNAME and RAI-PROXY-PASSWORD settings.", ex);
+                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
                 }
                 catch (HttpRequestException ex)
                 {
@@ -664,26 +583,40 @@ namespace tungstenlabs.integration.resistantai
             if (response == null)
                 return false;
 
-            return response.StatusCode == HttpStatusCode.ProxyAuthenticationRequired; // 407
+            return response.StatusCode == HttpStatusCode.ProxyAuthenticationRequired;
         }
 
+        // ============================================================
+        // ENTRY POINTS - ADAPTIVE RESULT
+        // ============================================================
 
-        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, String TASDKURL, String TASession)
+        // Existing entry point: WITHOUT proxy
+        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession)
         {
-            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
+            _cachedProxy = null; // no-proxy contract
             return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession).GetAwaiter().GetResult();
         }
 
+        // New entry point: WITH proxy (caller provides proxy settings)
+        public string[] GetAdaptiveResult1(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession, DO_ProxySettings proxySettings)
+        {
+            _cachedProxy = BuildProxyFromSettings(proxySettings);
 
+            // Enforce proxy presence for proxy entry point
+            if (_cachedProxy == null)
+                throw new ArgumentException("Proxy settings are required for GetAdaptiveResult1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
 
+            return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession).GetAwaiter().GetResult();
+        }
 
-
+        // ============================================================
+        // Legacy FetchResults (kept as-is)
+        // ============================================================
         private string FetchResults(string SubmissionURL, string SubmissionID)
         {
             if (AuthToken.access_token == "")
-            {
                 throw new Exception("Auth Token is empty!");
-            }
+
             HttpWebRequest httpWebRequest;
             HttpWebResponse httpWebResponse;
             string text = "";
@@ -702,6 +635,7 @@ namespace tungstenlabs.integration.resistantai
                     httpWebRequest.Method = "GET";
                     httpWebRequest.ContentType = "application/json";
                     httpWebRequest.Accept = "*/*";
+
                     httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
                     using (httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
                     using (var sr = new StreamReader(httpWebResponse.GetResponseStream(), ASCIIEncoding.UTF8))
@@ -711,25 +645,29 @@ namespace tungstenlabs.integration.resistantai
                 }
                 catch (WebException ex)
                 {
-                    // Handle potential web exceptions (e.g., connection errors, 404)
-                    if (counter >= max) // If it's the last attempt, rethrow the exception
-                    {
+                    if (counter >= max)
                         throw new Exception("Too many webexceptions - counter = " + counter + " - ", ex);
-                    }
                 }
                 delay = delay + (1000 * counter);
                 counter++;
             }
 
-            if (text == "") throw new Exception("Could not get the results from ResistantAI API");
+            if (text == "")
+                throw new Exception("Could not get the results from ResistantAI API");
 
             return text;
         }
 
-        public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
+        // ============================================================
+        // ENTRY POINTS - UPLOAD + FETCH FRAUD RESULTS
+        // ============================================================
+
+        // Existing entry point: WITHOUT proxy
+        public string[] UploadFileAndFetchResultsWithRetries(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
+                                string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries, out string SuspendReason)
         {
             SuspendReason = "";
-            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
+            _cachedProxy = null; // no-proxy contract
 
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
@@ -744,29 +682,85 @@ namespace tungstenlabs.integration.resistantai
                 result[0] = statusDesc;
                 result[1] = SubmissionID;
             }
-            else 
+            else
             {
                 try
                 {
                     SuspendReason = "";
                     result[0] = SubmissionID;
-                    //result[1] = FetchResults(SubmissionURL, SubmissionID);
                     result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries).GetAwaiter().GetResult();
                 }
-                catch (Exception e)
+                catch
                 {
                     SuspendReason = "Suspended";
-                    throw e;
+                    throw;
                 }
-                
             }
 
             return result;
         }
 
-        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID, string TASDKURL, string TASession)
+
+        
+
+
+        // New entry point: WITH proxy
+        public string[] UploadFileAndFetchResultsWithRetries1(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
+                                string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries, 
+                                DO_ProxySettings proxySettings, out string SuspendReason)
         {
-            _cachedProxy = GetProxyIfEnabled(TASession, TASDKURL);
+            SuspendReason = "";
+
+            _cachedProxy = BuildProxyFromSettings(proxySettings);
+
+            // Enforce proxy presence for proxy entry point
+            if (_cachedProxy == null)
+                throw new ArgumentException("Proxy settings are required for UploadFileAndFetchResultsWithRetries1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
+
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
+            string statusCode = uploadresult[0];
+            string statusDesc = uploadresult[1];
+            string SubmissionID = uploadresult[2];
+
+            string[] result = new string[2];
+
+            if (statusCode.ToLower() == "error")
+            {
+                SuspendReason = "Suspended";
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else
+            {
+                try
+                {
+                    SuspendReason = "";
+                    result[0] = SubmissionID;
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries).GetAwaiter().GetResult();
+                }
+                catch
+                {
+                    SuspendReason = "Suspended";
+                    throw;
+                }
+            }
+
+            return result;
+        }
+
+        // Existing non-retry entry point: WITHOUT proxy (adjusted per new rule)
+        public string[] UploadFileAndFetchResults(
+            string AuthenticationURL,
+            string SubmissionURL,
+            string ClientID,
+            string ClientSecret,
+            string QueryId,
+            string DocID,
+            string TASDKURL,
+            string TASession)
+        {
+            _cachedProxy = null; // no-proxy contract
+
             string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession);
             string statusCode = uploadresult[0];
             string statusDesc = uploadresult[1];
@@ -784,14 +778,12 @@ namespace tungstenlabs.integration.resistantai
                 try
                 {
                     result[0] = SubmissionID;
-                    //result[1] = FetchResults(SubmissionURL, SubmissionID);
-                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID,1).GetAwaiter().GetResult();
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, 1).GetAwaiter().GetResult();
                 }
-                catch (Exception e)
+                catch
                 {
-                    throw e;
+                    throw;
                 }
-
             }
 
             return result;
