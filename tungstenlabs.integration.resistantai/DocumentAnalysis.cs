@@ -60,7 +60,6 @@ namespace tungstenlabs.integration.resistantai
 
         // =========================================================
         // BuildProxyFromSettings (same pattern as ResistantAIConnector)
-        // NOTE: per your instruction, no other logic is changed.
         // =========================================================
         private IWebProxy BuildProxyFromSettings(DO_ProxySettings settings)
         {
@@ -102,10 +101,7 @@ namespace tungstenlabs.integration.resistantai
             _cachedProxy = null;
 
             // Token comes from TA (unchanged)
-            AuthToken = GetTokenFromTA(TASession, TASDKURL);
-
-            if (AuthToken == null || string.IsNullOrEmpty(AuthToken.access_token))
-                throw new Exception("Auth Token is empty!");
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
 
             return FetchResultsWithMetadataAsync(AuthenticationURL, SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category, ClientID, ClientSecret).GetAwaiter().GetResult();
         }
@@ -124,15 +120,31 @@ namespace tungstenlabs.integration.resistantai
                 throw new ArgumentException("Proxy settings are required for GetDocumentWithBoundingBoxes1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
 
             // Token comes from TA (unchanged)
-            AuthToken = GetTokenFromTA(TASession, TASDKURL);
-
-            if (AuthToken == null || string.IsNullOrEmpty(AuthToken.access_token))
-                throw new Exception("Auth Token is empty!");
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
 
             return FetchResultsWithMetadataAsync(AuthenticationURL, SubmissionURL, DocID, TASDKURL, TASession, SubmissionID, Category, ClientID, ClientSecret).GetAwaiter().GetResult();
         }
 
-        #region Token + Proxy handling (existing logic kept)
+        #region Token + Proxy handling
+
+        private void EnsureValidToken(string AuthenticationURL, string ClientID, string ClientSecret, string TASession, string TASDKURL)
+        {
+            AuthToken = GetTokenFromTA(TASession, TASDKURL);
+
+            if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
+            {
+                AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
+                    throw new Exception("Unable to obtain a valid Auth Token from RAI.");
+
+                ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                serverVariableHelper.UpdateServerVariables(
+                    dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+            }
+        }
 
         private DO_AuthCodeParamteres RefreshAuthToken(string URL, string ClientID, string ClientSecret)
         {
@@ -259,11 +271,6 @@ namespace tungstenlabs.integration.resistantai
 
         private string FetchResultsWithMetadata(string SubmissionURL, string DocID, string TASDKURL, string TASession, string SubmissionID, string Category)
         {
-            if (AuthToken == null || AuthToken.access_token == "")
-            {
-                throw new Exception("Auth Token is empty!");
-            }
-
             HttpWebRequest httpWebRequest;
             HttpWebResponse httpWebResponse;
             string text = "";
@@ -320,10 +327,7 @@ namespace tungstenlabs.integration.resistantai
         private async Task<string> FetchResultsWithMetadataAsync(string AuthenticationURL, string SubmissionURL, string DocID, string TASDKURL, string TASession,
                                     string SubmissionID, string Category, string ClientID, string ClientSecret)
         {
-            if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
-            {
-                throw new Exception("Auth Token is empty!");
-            }
+            
 
             HttpClientHandler handler = new HttpClientHandler();
 

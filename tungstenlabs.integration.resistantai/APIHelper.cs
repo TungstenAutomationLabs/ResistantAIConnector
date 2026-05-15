@@ -11,7 +11,7 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json.Linq;
-
+using Newtonsoft.Json;
 /*
  * tungstenlabs.integration.resistantai.ResistantAIConnector
  *
@@ -92,6 +92,7 @@ namespace tungstenlabs.integration.resistantai
         public const string RAI_CLIENT_SECRET = "RAI-CLIENT-SECRET";
         public const string RAI_CLIENT_TOKEN = "RAI-CLIENT-TOKEN";
         public const string RAI_ENABLE_DECISION = "RAI-ENABLE-DECISION";
+        public const string RAI_ENABLE_SUBMISSION_CHARACTERISTICS = "RAI-ENABLE-SUBMISSION-CHARACTERISTICS";
 
         // Still present for backwards compatibility / internal use,
         // but NOT used by the "no-proxy" entry points anymore.
@@ -238,7 +239,7 @@ namespace tungstenlabs.integration.resistantai
         }
 
         private DO_Submission Submission(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
-            string taSessionId, string taSdkUrl, string queryId)
+                                         string taSessionId, string taSdkUrl, string queryId, bool enableSubmissionCharacteristics = false)
         {
             bool shouldRetry = false;
             do
@@ -247,7 +248,7 @@ namespace tungstenlabs.integration.resistantai
                 {
                     shouldRetry = false;
                     bool enableDecisionValue = RetrieveEnableDecisionValue(taSessionId, taSdkUrl);
-
+                    
                     HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(SubmissionURL);
                     httpWebRequest.ContentType = "application/json";
                     httpWebRequest.Accept = "*/*";
@@ -261,7 +262,7 @@ namespace tungstenlabs.integration.resistantai
                         ""query_id"": ""{queryId}"",
                         ""pipeline_configuration"": ""FRAUD_ONLY"",
                         ""enable_decision"": {enableDecisionValue.ToString().ToLower()},
-                        ""enable_submission_characteristics"": false
+                        ""enable_submission_characteristics"": {enableSubmissionCharacteristics.ToString().ToLower()}
                     }}";
 
                     byte[] requestBodyBytes = Encoding.UTF8.GetBytes(requestBody);
@@ -355,6 +356,30 @@ namespace tungstenlabs.integration.resistantai
             }
         }
 
+
+        private bool RetrieveEnableSubmissionCharacteristicsValue(string taSessionId, string taSdkUrl)
+        {
+            try
+            {
+                List<string> vars = new List<string>()
+        {
+            RAI_ENABLE_SUBMISSION_CHARACTERISTICS
+        };
+
+                ServerVariableHelper helper = new ServerVariableHelper();
+                var sv = helper.GetServerVariables(taSessionId, taSdkUrl, vars);
+
+                string value = sv[RAI_ENABLE_SUBMISSION_CHARACTERISTICS].Value;
+
+                return value != null && value.ToLower() == "true";
+            }
+            catch
+            {
+                // Default to false if not found or error
+                return false;
+            }
+        }
+
         private byte[] GetKTADocumentFile(string docID, string ktaSDKUrl, string sessionID)
         {
             byte[] result = new byte[1];
@@ -376,8 +401,7 @@ namespace tungstenlabs.integration.resistantai
 
             HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
 
-            // NOTE: left "as-is" per your request, even though it reads GetResponseStream twice in earlier versions.
-            // Here it's only used once.
+           
             using (Stream responseStream = httpWebResponse.GetResponseStream())
             using (MemoryStream memoryStream = new MemoryStream())
             {
@@ -395,14 +419,28 @@ namespace tungstenlabs.integration.resistantai
         }
 
         private string[] UploadFiles(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
-            string QueryId, string DocID, string TASDKURL, string TASession)
+                                     string QueryId, string DocID, string TASDKURL, string TASession, string characteristicsJson = null, 
+                                     bool enableSubmissionCharacteristics = false)
         {
-            AuthToken = GetTokenFromTA(TASession, TASDKURL);
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
             DO_Submission objSubmission = new DO_Submission();
+            string characteristicsStatus = "";
 
             try
             {
-                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL, QueryId);
+                
+                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL, QueryId, enableSubmissionCharacteristics);                
+
+                if (enableSubmissionCharacteristics)
+                {
+                    if (string.IsNullOrWhiteSpace(characteristicsJson))
+                        throw new Exception("RAI-ENABLE-SUBMISSION-CHARACTERISTICS is true but no characteristics JSON was provided. Document will not be analyzed by RAI.");
+
+                    SubmitSubmissionCharacteristicsAsync(AuthenticationURL, SubmissionURL, objSubmission.submission_id,
+                        characteristicsJson, TASDKURL, TASession, ClientID, ClientSecret).GetAwaiter().GetResult();
+
+                    characteristicsStatus = "Submission Characteristics submitted successfully.";
+                }
 
                 byte[] FileArray = GetKTADocumentFile(DocID, TASDKURL, TASession);
 
@@ -422,21 +460,108 @@ namespace tungstenlabs.integration.resistantai
 
                 HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
 
-                string[] Returnarray = { httpWebResponse.StatusCode.ToString(), httpWebResponse.StatusDescription.ToString(), objSubmission.submission_id };
+                string[] Returnarray = { httpWebResponse.StatusCode.ToString(), httpWebResponse.StatusDescription.ToString(), objSubmission.submission_id, characteristicsStatus };
                 return Returnarray;
             }
             catch (Exception e)
             {
-                string[] arrayError = { "ERROR", e.ToString(), objSubmission.submission_id };
+                string[] arrayError = { "ERROR", e.ToString(), objSubmission.submission_id, string.IsNullOrEmpty(characteristicsStatus) ? "Submission Characteristics status unknown due to error." : characteristicsStatus };
                 return arrayError;
             }
         }
 
-        private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId, int maxAttempts)
-        {
-            if (string.IsNullOrEmpty(AuthToken.access_token))
-                throw new Exception("Auth Token is empty!");
+        private async Task<string> SubmitSubmissionCharacteristicsAsync(string AuthenticationURL, string submissionUrl, string submissionId, string characteristicsJson, string TASDKURL, string TASession, string ClientID, string ClientSecret)
+{
+    if (string.IsNullOrWhiteSpace(submissionId))
+        throw new ArgumentException("submissionId is required.");
 
+    if (string.IsNullOrWhiteSpace(characteristicsJson))
+        throw new ArgumentException("characteristicsJson is required.");
+
+    // Clean JSON once before sending
+    characteristicsJson = CleanCharacteristicsJson(characteristicsJson);
+
+    HttpClientHandler handler = new HttpClientHandler();
+
+    if (_cachedProxy != null)
+    {
+        handler.Proxy = _cachedProxy;
+        handler.UseProxy = true;
+    }
+    else
+    {
+        handler.UseProxy = false;
+    }
+
+    using (HttpClient httpClient = new HttpClient(handler))
+    {
+        httpClient.DefaultRequestHeaders.Authorization =
+            new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+        string requestUri = $"{submissionUrl}/{submissionId}/characteristics";
+        bool shouldRetry = false;
+        bool hasRetried = false;
+
+        do
+        {
+            try
+            {
+                shouldRetry = false;
+
+                using (var content = new StringContent(characteristicsJson, Encoding.UTF8, "application/json"))
+                {
+                    HttpResponseMessage response = await httpClient.PutAsync(requestUri, content).ConfigureAwait(false);
+
+                    if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                        response.StatusCode == HttpStatusCode.Forbidden)
+                    {
+                        if (hasRetried)
+                            throw new Exception("Submission Characteristics API authentication failed after token refresh.");
+
+                        shouldRetry = true;
+                        hasRetried = true;
+
+                        AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                        ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                        var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                        dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(
+                            dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                        serverVariableHelper.UpdateServerVariables(
+                            dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+
+                        httpClient.DefaultRequestHeaders.Authorization =
+                            new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+                    }
+                    else if (response.StatusCode == HttpStatusCode.NoContent)
+                    {
+                        return "SUCCESS";
+                    }
+                    else
+                    {
+                        string errorContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        throw new Exception($"Submission Characteristics API failed. StatusCode={(int)response.StatusCode}. Response={errorContent}");
+                    }
+                }
+            }
+            catch (HttpRequestException ex) when (IsProxyAuthError(ex))
+            {
+                throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
+            }
+            catch (HttpRequestException ex)
+            {
+                throw new Exception($"Submission Characteristics API request failed: {ex.Message}", ex);
+            }
+        } while (shouldRetry);
+    }
+
+    return "SUCCESS";
+}
+
+
+
+        private async Task<string> FetchResultsAsync(string submissionUrl, string submissionId, int maxAttempts, string AuthenticationURL, string ClientID, string ClientSecret, string TASession, string TASDKURL)
+        {
             HttpClientHandler handler = new HttpClientHandler();
 
             if (_cachedProxy != null)
@@ -449,49 +574,155 @@ namespace tungstenlabs.integration.resistantai
                 handler.UseProxy = false;
             }
 
-            HttpClient httpClient = new HttpClient(handler);
-
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
-
-            string requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
-
-            string result = null;
-            int attempt = 0;
-            int delayMs = 4000;
-
-            while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result))
+            using (HttpClient httpClient = new HttpClient(handler))
             {
-                try
-                {
-                    await Task.Delay(delayMs).ConfigureAwait(false);
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
 
-                    HttpResponseMessage response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
-                    response.EnsureSuccessStatusCode();
+                string requestUri = $"{submissionUrl}/{submissionId}/fraud?with_metadata=true";
+                string result = null;
+                int attempt = 0;
+                int delayMs = 4000;
 
-                    result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                }
-                catch (HttpRequestException ex) when (IsProxyAuthError(ex))
+                while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result))
                 {
-                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
-                }
-                catch (HttpRequestException ex)
-                {
-                    if (attempt >= maxAttempts)
-                        throw new Exception($"Too many failures (attempt {attempt})", ex);
+                    try
+                    {
+                        await Task.Delay(delayMs).ConfigureAwait(false);
+
+                        HttpResponseMessage response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+
+                        if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                            response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                            ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                            var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                            dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                            serverVariableHelper.UpdateServerVariables(
+                                dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+
+                            httpClient.DefaultRequestHeaders.Authorization =
+                                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                            delayMs += 1000 * attempt;
+                            attempt++;
+                            continue;
+                        }
+
+                        response.EnsureSuccessStatusCode();
+
+                        result = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                    }
+                    catch (HttpRequestException ex) when (IsProxyAuthError(ex))
+                    {
+                        throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
+                    }
+                    catch (HttpRequestException ex)
+                    {
+                        if (attempt >= maxAttempts)
+                            throw new Exception($"Too many failures (attempt {attempt})", ex);
+                    }
+
+                    delayMs += 1000 * attempt;
+                    attempt++;
                 }
 
-                delayMs += 1000 * attempt;
-                attempt++;
+                if (string.IsNullOrWhiteSpace(result))
+                    throw new Exception("Could not get the results from ResistantAI API");
+
+                return result;
             }
-
-            if (string.IsNullOrWhiteSpace(result))
-                throw new Exception("Could not get the results from ResistantAI API");
-
-            return result;
         }
 
-        private async Task<string[]> FetchAdaptiveResultAsync(string submissionUrl, string submissionId, int maxAttempts, string TASDKURL, string TASession)
+
+
+        private void EnsureValidToken(string AuthenticationURL, string ClientID, string ClientSecret, string TASession, string TASDKURL)
+        {
+            AuthToken = GetTokenFromTA(TASession, TASDKURL);
+
+            if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
+            {
+                AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                if (AuthToken == null || string.IsNullOrWhiteSpace(AuthToken.access_token))
+                    throw new Exception("Unable to obtain a valid Auth Token from RAI.");
+
+                ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                serverVariableHelper.UpdateServerVariables(
+                    dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+            }
+        }
+
+
+
+        private string CleanCharacteristicsJson(string json)
+        {
+            try
+            {
+                JToken token = JToken.Parse(json);
+                CleanToken(token);
+
+                if (token.Type == JTokenType.Object && !token.HasValues)
+                    throw new ArgumentException("characteristicsJson does not contain any populated fields after cleanup.");
+
+                return token.ToString(Formatting.None);
+            }
+            catch (JsonReaderException ex)
+            {
+                throw new ArgumentException($"characteristicsJson is not valid JSON: {ex.Message}", ex);
+            }
+        }
+
+        private void CleanToken(JToken token)
+        {
+            if (token.Type == JTokenType.Object)
+            {
+                JObject obj = (JObject)token;
+                List<string> toRemove = new List<string>();
+
+                foreach (var property in obj.Properties())
+                {
+                    if (property.Value.Type == JTokenType.Null)
+                    {
+                        toRemove.Add(property.Name);
+                    }
+                    else if (property.Value.Type == JTokenType.String &&
+                             string.IsNullOrEmpty(property.Value.ToString()))
+                    {
+                        toRemove.Add(property.Name);
+                    }
+                    else if (property.Value.Type == JTokenType.Array &&
+                             !property.Value.HasValues)
+                    {
+                        toRemove.Add(property.Name);
+                    }
+                    else if (property.Value.Type == JTokenType.Object)
+                    {
+                        CleanToken(property.Value);
+                        if (!property.Value.HasValues)
+                            toRemove.Add(property.Name);
+                    }
+                }
+
+                foreach (string key in toRemove)
+                    obj.Remove(key);
+            }
+            else if (token.Type == JTokenType.Array)
+            {
+                foreach (JToken child in token.Children())
+                    CleanToken(child);
+            }
+        }
+
+
+
+
+
+        private async Task<string[]> FetchAdaptiveResultAsync(string submissionUrl, string submissionId, int maxAttempts, string TASDKURL, string TASession, string AuthenticationURL, string ClientID, string ClientSecret)
         {
             var handler = new HttpClientHandler();
 
@@ -505,73 +736,92 @@ namespace tungstenlabs.integration.resistantai
                 handler.UseProxy = false;
             }
 
-            HttpClient httpClient = new HttpClient(handler);
-
-            AuthToken = GetTokenFromTA(TASession, TASDKURL);
-            if (string.IsNullOrEmpty(AuthToken.access_token))
-                throw new Exception("Auth Token is empty!");
-
-            httpClient.DefaultRequestHeaders.Authorization =
-                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
-
-            var requestUri = $"{submissionUrl}/{submissionId}/decision";
-            string[] result = new string[2];
-            int attempt = 0;
-            int delayMs = 4000;
-
-            while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result[0]))
+            using (HttpClient httpClient = new HttpClient(handler))
             {
-                try
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                var requestUri = $"{submissionUrl}/{submissionId}/decision";
+                string[] result = new string[2];
+                int attempt = 0;
+                int delayMs = 4000;
+
+                while (attempt <= maxAttempts && string.IsNullOrWhiteSpace(result[0]))
                 {
-                    await Task.Delay(delayMs).ConfigureAwait(false);
-
-                    var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
-                    var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-
-                    if (response.StatusCode == HttpStatusCode.BadRequest)
+                    try
                     {
-                        var json = JObject.Parse(content);
-                        if (json["message"]?.ToString()?.Contains("Adaptive Decision feature enabled") == true)
+                        await Task.Delay(delayMs).ConfigureAwait(false);
+
+                        var response = await httpClient.GetAsync(requestUri).ConfigureAwait(false);
+                        var content = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+
+                        if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                            response.StatusCode == HttpStatusCode.Forbidden)
                         {
-                            result[0] = "Adaptive Decision feature was not enabled for this submission.";
-                            result[1] = "Adaptive Decision feature was not enabled for this submission.";
-                            return result;
+                            AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                            ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                            var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                            dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                            serverVariableHelper.UpdateServerVariables(
+                                dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+
+                            httpClient.DefaultRequestHeaders.Authorization =
+                                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                            delayMs += 1000 * attempt;
+                            attempt++;
+                            continue;
                         }
-                        else
+
+                        if (response.StatusCode == HttpStatusCode.BadRequest)
                         {
-                            throw new Exception($"Bad request: {content}");
+                            var json = JObject.Parse(content);
+                            if (json["message"]?.ToString()?.Contains("Adaptive Decision feature enabled") == true)
+                            {
+                                result[0] = "Adaptive Decision feature was not enabled for this submission.";
+                                result[1] = "Adaptive Decision feature was not enabled for this submission.";
+                                return result;
+                            }
+                            else
+                            {
+                                throw new Exception($"Bad request: {content}");
+                            }
+                        }
+
+                        response.EnsureSuccessStatusCode();
+
+                        var resultJson = JObject.Parse(content);
+                        if (resultJson["decision"] != null)
+                        {
+                            result[0] = resultJson["decision"]?.ToString();
+                            result[1] = resultJson["reason"]?["sub_reason"]?["label"]?.ToString();
+                            break;
                         }
                     }
-
-                    response.EnsureSuccessStatusCode();
-
-                    var resultJson = JObject.Parse(content);
-                    if (resultJson["decision"] != null)
+                    catch (HttpRequestException ex) when (IsProxyAuthError(ex))
                     {
-                        result[0] = resultJson["decision"]?.ToString();
-                        result[1] = resultJson["reason"]?["sub_reason"]?["label"]?.ToString();
-                        break;
+                        throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
                     }
-                }
-                catch (HttpRequestException ex) when (IsProxyAuthError(ex))
-                {
-                    throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
-                }
-                catch (HttpRequestException ex)
-                {
-                    if (attempt >= maxAttempts)
-                        throw new Exception($"Too many failures (attempt {attempt})", ex);
+                    catch (HttpRequestException ex)
+                    {
+                        if (attempt >= maxAttempts)
+                            throw new Exception($"Too many failures (attempt {attempt})", ex);
+                    }
+
+                    delayMs += 1000 * attempt;
+                    attempt++;
                 }
 
-                delayMs += 1000 * attempt;
-                attempt++;
+                if (string.IsNullOrWhiteSpace(result[0]))
+                    throw new Exception("Could not get Adaptive Decision result from ResistantAI API.");
+
+                return result;
             }
-
-            if (string.IsNullOrWhiteSpace(result[0]))
-                throw new Exception("Could not get Adaptive Decision result from ResistantAI API.");
-
-            return result;
         }
+
+
+
 
         private bool IsProxyAuthError(HttpRequestException ex)
         {
@@ -591,22 +841,21 @@ namespace tungstenlabs.integration.resistantai
         // ============================================================
 
         // Existing entry point: WITHOUT proxy
-        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession)
+        public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession, string AuthenticationURL, string ClientID, string ClientSecret)
         {
-            _cachedProxy = null; // no-proxy contract
-            return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession).GetAwaiter().GetResult();
+            _cachedProxy = null;
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);            
+            return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession, AuthenticationURL, ClientID, ClientSecret).GetAwaiter().GetResult();
         }
 
         // New entry point: WITH proxy (caller provides proxy settings)
-        public string[] GetAdaptiveResult1(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession, DO_ProxySettings proxySettings)
+        public string[] GetAdaptiveResult1(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession, DO_ProxySettings proxySettings, string AuthenticationURL, string ClientID, string ClientSecret)
         {
             _cachedProxy = BuildProxyFromSettings(proxySettings);
-
-            // Enforce proxy presence for proxy entry point
             if (_cachedProxy == null)
                 throw new ArgumentException("Proxy settings are required for GetAdaptiveResult1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
-
-            return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession).GetAwaiter().GetResult();
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
+            return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession, AuthenticationURL, ClientID, ClientSecret).GetAwaiter().GetResult();
         }
 
         // ============================================================
@@ -688,7 +937,7 @@ namespace tungstenlabs.integration.resistantai
                 {
                     SuspendReason = "";
                     result[0] = SubmissionID;
-                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries).GetAwaiter().GetResult();
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL).GetAwaiter().GetResult();
                 }
                 catch
                 {
@@ -701,7 +950,106 @@ namespace tungstenlabs.integration.resistantai
         }
 
 
-        
+
+        public string[] UploadFileAndFetchResultsWithCharacteristics(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
+                        string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries,
+                        string characteristicsJson, out string Notes)
+        {
+            Notes = "";
+            _cachedProxy = null;
+
+            bool enableSubmissionCharacteristics = RetrieveEnableSubmissionCharacteristicsValue(TASession, TASDKURL);
+
+            if (!enableSubmissionCharacteristics)
+                Notes = "Warning: RAI-ENABLE-SUBMISSION-CHARACTERISTICS is false. Submission characteristics will be skipped.";
+
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession,
+                characteristicsJson, enableSubmissionCharacteristics);
+
+            string statusCode = uploadresult[0];
+            string statusDesc = uploadresult[1];
+            string SubmissionID = uploadresult[2];
+            string characteristicsStatus = uploadresult.Length > 3 ? uploadresult[3] : "";
+
+            string[] result = new string[2];
+
+            if (statusCode.ToLower() == "error")
+            {
+                Notes = string.IsNullOrEmpty(characteristicsStatus) ? statusDesc : $"{statusDesc} | Characteristics: {characteristicsStatus}";
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else
+            {
+                try
+                {
+                    result[0] = SubmissionID;
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL).GetAwaiter().GetResult();
+                    if (!string.IsNullOrEmpty(characteristicsStatus))
+                        Notes = characteristicsStatus;
+                }
+                catch
+                {
+                    Notes = "Suspended";
+                    throw;
+                }
+            }
+
+            return result;
+        }
+
+
+
+        public string[] UploadFileAndFetchResultsWithCharacteristics1(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
+                        string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries,
+                        string characteristicsJson, DO_ProxySettings proxySettings, out string Notes)
+        {
+            Notes = "";
+
+            _cachedProxy = BuildProxyFromSettings(proxySettings);
+
+            if (_cachedProxy == null)
+                throw new ArgumentException("Proxy settings are required for UploadFileAndFetchResultsWithCharacteristics1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
+
+            bool enableSubmissionCharacteristics = RetrieveEnableSubmissionCharacteristicsValue(TASession, TASDKURL);
+
+            if (!enableSubmissionCharacteristics)
+                Notes = "Warning: RAI-ENABLE-SUBMISSION-CHARACTERISTICS is false. Submission characteristics will be skipped.";
+
+            string[] uploadresult = UploadFiles(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, QueryId, DocID, TASDKURL, TASession,
+                characteristicsJson, enableSubmissionCharacteristics);
+
+            string statusCode = uploadresult[0];
+            string statusDesc = uploadresult[1];
+            string SubmissionID = uploadresult[2];
+            string characteristicsStatus = uploadresult.Length > 3 ? uploadresult[3] : "";
+
+            string[] result = new string[2];
+
+            if (statusCode.ToLower() == "error")
+            {
+                Notes = string.IsNullOrEmpty(characteristicsStatus) ? statusDesc : $"{statusDesc} | Characteristics: {characteristicsStatus}";
+                result[0] = statusDesc;
+                result[1] = SubmissionID;
+            }
+            else
+            {
+                try
+                {
+                    result[0] = SubmissionID;
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL).GetAwaiter().GetResult();
+                    if (!string.IsNullOrEmpty(characteristicsStatus))
+                        Notes = characteristicsStatus;
+                }
+                catch
+                {
+                    Notes = "Suspended";
+                    throw;
+                }
+            }
+
+            return result;
+        }
 
 
         // New entry point: WITH proxy
@@ -735,8 +1083,8 @@ namespace tungstenlabs.integration.resistantai
                 try
                 {
                     SuspendReason = "";
-                    result[0] = SubmissionID;
-                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries).GetAwaiter().GetResult();
+                    result[0] = SubmissionID;                    
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL).GetAwaiter().GetResult();
                 }
                 catch
                 {
@@ -749,15 +1097,8 @@ namespace tungstenlabs.integration.resistantai
         }
 
         // Existing non-retry entry point: WITHOUT proxy (adjusted per new rule)
-        public string[] UploadFileAndFetchResults(
-            string AuthenticationURL,
-            string SubmissionURL,
-            string ClientID,
-            string ClientSecret,
-            string QueryId,
-            string DocID,
-            string TASDKURL,
-            string TASession)
+        public string[] UploadFileAndFetchResults(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret, string QueryId, string DocID,
+            string TASDKURL, string TASession)
         {
             _cachedProxy = null; // no-proxy contract
 
@@ -778,7 +1119,7 @@ namespace tungstenlabs.integration.resistantai
                 try
                 {
                     result[0] = SubmissionID;
-                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, 1).GetAwaiter().GetResult();
+                    result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, 3, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL).GetAwaiter().GetResult();
                 }
                 catch
                 {
