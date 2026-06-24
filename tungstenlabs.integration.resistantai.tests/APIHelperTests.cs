@@ -264,5 +264,23 @@ namespace tungstenlabs.integration.resistantai.tests
 
             Assert.IsFalse(string.IsNullOrEmpty(boundingBoxNewDocId), "New bounding box document ID should not be empty");
         }
+
+
+        // =============================================
+        // 11. Diagnostics
+        // =============================================
+        [TestMethod]
+        public void Test_11_RunDiagnostics()
+        {
+            var helper = new tungstenlabs.integration.raidiagnostics.DiagnosticHelper();
+
+            string jsonResult = helper.RunDiagnostics(
+                Constants.TOTALAGILITY_API_URL,
+                Constants.TOTALAGILITY_SESSION_ID
+            );
+
+            
+            Assert.IsFalse(string.IsNullOrEmpty(jsonResult), "Diagnostic result should not be empty");
+        }
     }
 }
