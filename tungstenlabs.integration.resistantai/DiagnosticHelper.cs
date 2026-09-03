@@ -37,7 +37,7 @@ namespace tungstenlabs.integration.raidiagnostics
     public class DiagnosticHelper
     {
         // =========================================================
-        // Server variable name constants (defined locally — no dependency on resistantai assembly)
+        // Server variable name constants (defined locally - no dependency on resistantai assembly)
         // =========================================================
         private const string RAI_URL_TOKEN = "RAI-URL-TOKEN";
         private const string RAI_URL_API = "RAI-URL-API";
@@ -51,6 +51,8 @@ namespace tungstenlabs.integration.raidiagnostics
         private const string RAI_PROXY_USERNAME = "RAI-PROXY-USERNAME";
         private const string RAI_PROXY_PASSWORD = "RAI-PROXY-PASSWORD";
         private const string TOTALAGILITY_URL_API = "TOTALAGILITY-URL-API";
+        private const string RAI_IFRAME_BUNDLE_URL = "RAI-IFRAME-BUNDLE-URL";
+        private const string DEFAULT_IFRAME_BUNDLE_URL = "https://assets.documents.resistant.ai/iframe-standalone/latest/";
 
         private IWebProxy _cachedProxy = null;
 
@@ -66,7 +68,7 @@ namespace tungstenlabs.integration.raidiagnostics
         /// marked Secure in TotalAgility: RAI-URL-TOKEN, RAI-URL-API, RAI-CLIENT-ID,
         /// RAI-CLIENT-SECRET, RAI-CLIENT-TOKEN. Once diagnostics are complete, re-secure them.
         ///
-        /// Proxy configuration is also read automatically — if RAI-PROXY-ENABLE is true,
+        /// Proxy configuration is also read automatically - if RAI-PROXY-ENABLE is true,
         /// RAI-PROXY-URL / RAI-PROXY-USERNAME / RAI-PROXY-PASSWORD are used for all outbound RAI traffic.
         /// </summary>
         /// <param name="TASDKURL">TotalAgility SDK URL</param>
@@ -83,7 +85,7 @@ namespace tungstenlabs.integration.raidiagnostics
                 {
                     new DiagnosticResult
                     {
-                        StepName = "Server Variables — Pre-flight Check",
+                        StepName = "Server Variables - Pre-flight Check",
                         Status = "Fail",
                         Passed = false,
                         ErrorMessage = credentialError,
@@ -159,7 +161,7 @@ namespace tungstenlabs.integration.raidiagnostics
 
             try
             {
-                // Read only the enable flag first — never proxied, always internal
+                // Read only the enable flag first - never proxied, always internal
                 var enableVars = GetServerVariables(TASession, TASDKURL, new List<string> { RAI_PROXY_ENABLE });
 
                 bool enabled = enableVars.TryGetValue(RAI_PROXY_ENABLE, out string enableVal) &&
@@ -204,7 +206,7 @@ namespace tungstenlabs.integration.raidiagnostics
             }
             catch
             {
-                // Proxy vars not configured — proceed without proxy
+                // Proxy vars not configured - proceed without proxy
                 return null;
             }
         }
@@ -261,19 +263,25 @@ namespace tungstenlabs.integration.raidiagnostics
             }
             else
             {
-                results.Add(Skipped("TotalAgility Server Variables — Required", "Skipped because TotalAgility SDK was not reachable.", "TotalAgility Configuration"));
-                results.Add(Skipped("TotalAgility Server Variables — Optional Feature Flags", "Skipped because TotalAgility SDK was not reachable.", "TotalAgility Configuration"));
+                results.Add(Skipped("TotalAgility Server Variables - Required", "Skipped because TotalAgility SDK was not reachable.", "TotalAgility Configuration"));
+                results.Add(Skipped("TotalAgility Server Variables - Optional Feature Flags", "Skipped because TotalAgility SDK was not reachable.", "TotalAgility Configuration"));
             }
 
             // ---------------------------------------------------------
-            // Step 3: RAI authentication endpoint — network reachability
+            // Step 3: RAI authentication endpoint - network reachability
             // ---------------------------------------------------------
             bool tokenEndpointReachable = CheckTokenEndpointReachability(AuthenticationURL, results);
 
             // ---------------------------------------------------------
-            // Step 4: RAI submission endpoint — network reachability (independent of auth)
+            // Step 4: RAI submission endpoint - network reachability (independent of auth)
             // ---------------------------------------------------------
             CheckSubmissionEndpointReachability(SubmissionURL, results);
+
+            // ---------------------------------------------------------
+            // Step 4b: Offline iFrame bundle - network reachability (independent of auth).
+            // Only relevant to customers using the RAI Offline iFrame Viewer (v3.1+).
+            // ---------------------------------------------------------
+            CheckIframeBundleReachability(TASDKURL, TASession, results);
 
             // ---------------------------------------------------------
             // Step 5: RAI authentication (Client ID / Secret)
@@ -302,7 +310,7 @@ namespace tungstenlabs.integration.raidiagnostics
             }
 
             // ---------------------------------------------------------
-            // Step 7: In-memory document upload — proves S3 whitelisting
+            // Step 7: In-memory document upload - proves S3 whitelisting
             // ---------------------------------------------------------
             string diagnosticSubmissionId = null;
             if (!string.IsNullOrEmpty(accessToken))
@@ -315,7 +323,7 @@ namespace tungstenlabs.integration.raidiagnostics
             }
 
             // ---------------------------------------------------------
-            // Step 8: Fraud result retrieval — proves full end-to-end path
+            // Step 8: Fraud result retrieval - proves full end-to-end path
             // ---------------------------------------------------------
             if (!string.IsNullOrEmpty(diagnosticSubmissionId))
             {
@@ -333,7 +341,7 @@ namespace tungstenlabs.integration.raidiagnostics
         // STEP IMPLEMENTATIONS
         // =========================================================
 
-        /// <summary>Step 1 — confirms the TA SDK endpoint is reachable and responds.</summary>
+        /// <summary>Step 1 - confirms the TA SDK endpoint is reachable and responds.</summary>
         private bool CheckTASdkReachability(string TASDKURL, string TASession, List<DiagnosticResult> results)
         {
             var result = new DiagnosticResult { StepName = "TotalAgility SDK Reachability" };
@@ -397,7 +405,7 @@ namespace tungstenlabs.integration.raidiagnostics
                         }
                         catch (Exception svEx)
                         {
-                            // TOTALAGILITY-URL-API not configured — warn but don't fail reachability
+                            // TOTALAGILITY-URL-API not configured - warn but don't fail reachability
                             result.Details += $" Warning: could not verify TOTALAGILITY-URL-API server variable ({svEx.Message}).";
                         }
                     }
@@ -428,15 +436,15 @@ namespace tungstenlabs.integration.raidiagnostics
             return result.Passed;
         }
 
-        /// <summary>Step 2a — confirms all required server variables are present and non-empty.
+        /// <summary>Step 2a - confirms all required server variables are present and non-empty.
         /// Readable variables (RAI-URL-TOKEN, RAI-URL-API, RAI-CLIENT-ID) are fetched together.
-        /// Secure variables (RAI-CLIENT-SECRET, RAI-CLIENT-TOKEN) are probed individually —
+        /// Secure variables (RAI-CLIENT-SECRET, RAI-CLIENT-TOKEN) are probed individually -
         /// ServerVariableHelper throws on secure vars, so a throw means "present and secured" (correct),
         /// while a "not found" exception means it is missing entirely.
         /// </summary>
         private void CheckRequiredServerVariables(string TASDKURL, string TASession, List<DiagnosticResult> results)
         {
-            var result = new DiagnosticResult { StepName = "TotalAgility Server Variables — Required" };
+            var result = new DiagnosticResult { StepName = "TotalAgility Server Variables - Required" };
 
             // Readable (non-secure) variables
             string[] readableVars = new[]
@@ -446,7 +454,7 @@ namespace tungstenlabs.integration.raidiagnostics
                 RAI_CLIENT_ID
             };
 
-            // Secure variables — must be probed one at a time
+            // Secure variables - must be probed one at a time
             string[] secureVars = new[]
             {
                 RAI_CLIENT_SECRET,
@@ -476,7 +484,7 @@ namespace tungstenlabs.integration.raidiagnostics
                     try
                     {
                         GetServerVariables(TASession, TASDKURL, new List<string> { varName });
-                        // If we get here the variable exists but is NOT marked secure — still counts as present
+                        // If we get here the variable exists but is NOT marked secure - still counts as present
                         present.Add(varName);
                     }
                     catch (Exception ex) when (ex.Message.Contains("secure"))
@@ -491,7 +499,7 @@ namespace tungstenlabs.integration.raidiagnostics
                     }
                     catch
                     {
-                        // Any other error on a secure var probe — treat as missing to be safe
+                        // Any other error on a secure var probe - treat as missing to be safe
                         missing.Add(varName);
                     }
                 }
@@ -522,10 +530,10 @@ namespace tungstenlabs.integration.raidiagnostics
             Finish(results, result);
         }
 
-        /// <summary>Step 2b — reports on optional feature-flag variables (informational, never fails the suite).</summary>
+        /// <summary>Step 2b - reports on optional feature-flag variables (informational, never fails the suite).</summary>
         private void CheckOptionalServerVariables(string TASDKURL, string TASession, List<DiagnosticResult> results)
         {
-            var result = new DiagnosticResult { StepName = "TotalAgility Server Variables — Optional Feature Flags" };
+            var result = new DiagnosticResult { StepName = "TotalAgility Server Variables - Optional Feature Flags" };
 
             string[] optionalVars = new[]
             {
@@ -543,7 +551,7 @@ namespace tungstenlabs.integration.raidiagnostics
                     if (vars.ContainsKey(varName))
                         notes.Add($"{varName} = '{vars[varName]}'");
                     else
-                        notes.Add($"{varName} — not found (defaults to false / disabled)");
+                        notes.Add($"{varName} - not found (defaults to false / disabled)");
                 }
 
                 result.Passed = true;
@@ -551,7 +559,7 @@ namespace tungstenlabs.integration.raidiagnostics
             }
             catch (Exception ex)
             {
-                // Optional vars — don't fail, just note the situation.
+                // Optional vars - don't fail, just note the situation.
                 result.Passed = true;
                 result.Details = $"Optional feature-flag variables could not be read (may not be configured yet, which is fine). Details: {ex.Message}";
             }
@@ -559,10 +567,10 @@ namespace tungstenlabs.integration.raidiagnostics
             Finish(results, result);
         }
 
-        /// <summary>Step 3 — confirms the RAI token endpoint is reachable over the network.</summary>
+        /// <summary>Step 3 - confirms the RAI token endpoint is reachable over the network.</summary>
         private bool CheckTokenEndpointReachability(string AuthenticationURL, List<DiagnosticResult> results)
         {
-            var result = new DiagnosticResult { StepName = "Resistant AI Authentication Endpoint — Network Reachability" };
+            var result = new DiagnosticResult { StepName = "Resistant AI Authentication Endpoint - Network Reachability" };
 
             try
             {
@@ -577,7 +585,7 @@ namespace tungstenlabs.integration.raidiagnostics
 
                 using (HttpClient client = CreateHttpClient(timeoutSeconds: 15))
                 {
-                    // A bare GET to an Okta token endpoint returns 4xx — that still proves network reachability.
+                    // A bare GET to an Okta token endpoint returns 4xx - that still proves network reachability.
                     var response = client.GetAsync(AuthenticationURL).GetAwaiter().GetResult();
                     result.Passed = true;
                     result.Details = $"Endpoint responded with HTTP {(int)response.StatusCode}. Network path is open.";
@@ -602,10 +610,10 @@ namespace tungstenlabs.integration.raidiagnostics
             return result.Passed;
         }
 
-        /// <summary>Step 4 — confirms the RAI submission endpoint is reachable over the network (independent of auth).</summary>
+        /// <summary>Step 4 - confirms the RAI submission endpoint is reachable over the network (independent of auth).</summary>
         private void CheckSubmissionEndpointReachability(string SubmissionURL, List<DiagnosticResult> results)
         {
-            var result = new DiagnosticResult { StepName = "Resistant AI Submission Endpoint — Network Reachability" };
+            var result = new DiagnosticResult { StepName = "Resistant AI Submission Endpoint - Network Reachability" };
 
             try
             {
@@ -620,7 +628,7 @@ namespace tungstenlabs.integration.raidiagnostics
 
                 using (HttpClient client = CreateHttpClient(timeoutSeconds: 15))
                 {
-                    // A GET without a bearer token is expected to return 401/403 — still proves reachability.
+                    // A GET without a bearer token is expected to return 401/403 - still proves reachability.
                     var response = client.GetAsync(SubmissionURL).GetAwaiter().GetResult();
                     result.Passed = true;
                     result.Details = $"Endpoint responded with HTTP {(int)response.StatusCode}. Network path is open.";
@@ -644,7 +652,69 @@ namespace tungstenlabs.integration.raidiagnostics
             Finish(results, result);
         }
 
-        /// <summary>Step 5 — authenticates using Client ID + Secret and obtains a bearer token.</summary>
+        /// <summary>
+        /// Step 4b - confirms the RAI Offline iFrame bundle URL is reachable over the network.
+        /// This is a common failure point in sandboxed/whitelisted environments, since the bundle
+        /// is hosted on assets.documents.resistant.ai (or an environment's configured mirror/proxy)
+        /// rather than a TTA-SaaS domain - it must be separately added to the allowlist.
+        /// Reads RAI-IFRAME-BUNDLE-URL from server variables if configured; otherwise checks the
+        /// default RAI-hosted URL. This check does not fail the overall suite if the variable is
+        /// simply not configured - it is only relevant to customers using the Offline iFrame Viewer.
+        /// </summary>
+        private void CheckIframeBundleReachability(string TASDKURL, string TASession, List<DiagnosticResult> results)
+        {
+            var result = new DiagnosticResult { StepName = "Resistant AI Offline iFrame Bundle - Network Reachability" };
+
+            string bundleUrl = DEFAULT_IFRAME_BUNDLE_URL;
+            bool usingConfiguredValue = false;
+
+            try
+            {
+                var vars = GetServerVariables(TASession, TASDKURL, new List<string> { RAI_IFRAME_BUNDLE_URL });
+                if (vars.ContainsKey(RAI_IFRAME_BUNDLE_URL) && !string.IsNullOrWhiteSpace(vars[RAI_IFRAME_BUNDLE_URL]))
+                {
+                    bundleUrl = vars[RAI_IFRAME_BUNDLE_URL];
+                    usingConfiguredValue = true;
+                }
+            }
+            catch
+            {
+                // RAI-IFRAME-BUNDLE-URL not configured - fine, this feature may not be in use.
+                // Fall through and check the default RAI-hosted URL instead, purely informational.
+            }
+
+            try
+            {
+                using (HttpClient client = CreateHttpClient(timeoutSeconds: 15))
+                {
+                    var response = client.GetAsync(bundleUrl).GetAwaiter().GetResult();
+                    result.Passed = true;
+                    result.Details = $"Checked {(usingConfiguredValue ? "configured RAI-IFRAME-BUNDLE-URL" : "default RAI-hosted bundle URL")} " +
+                                     $"({bundleUrl}). Endpoint responded with HTTP {(int)response.StatusCode}. Network path is open.";
+                }
+            }
+            catch (HttpRequestException ex) when (IsCertificateError(ex))
+            {
+                result.Passed = false;
+                result.ErrorMessage = "A certificate validation error occurred connecting to the Resistant AI offline iFrame bundle URL.";
+                result.SuggestedArea = "Network/Firewall";
+                result.Details = $"URL checked: {bundleUrl}. {ex.Message}";
+            }
+            catch (Exception ex)
+            {
+                result.Passed = false;
+                result.ErrorMessage = "Unable to reach the Resistant AI offline iFrame bundle URL. If you are using the Offline iFrame Viewer, " +
+                                      "this domain must be separately whitelisted - it is hosted on assets.documents.resistant.ai " +
+                                      "(or your configured RAI-IFRAME-BUNDLE-URL), not a TTA-SaaS domain. If you are not using the " +
+                                      "Offline iFrame Viewer, this failure can be ignored.";
+                result.SuggestedArea = "Network/Firewall";
+                result.Details = $"URL checked: {bundleUrl}. {ex.Message}";
+            }
+
+            Finish(results, result);
+        }
+
+        /// <summary>Step 5 - authenticates using Client ID + Secret and obtains a bearer token.</summary>
         private string CheckAuthentication(string AuthenticationURL, string ClientID, string ClientSecret, List<DiagnosticResult> results)
         {
             var result = new DiagnosticResult { StepName = "Resistant AI Authentication" };
@@ -726,7 +796,7 @@ namespace tungstenlabs.integration.raidiagnostics
             return accessToken;
         }
 
-        /// <summary>Step 6 — creates a minimal test submission to confirm the token and submission API work together.</summary>
+        /// <summary>Step 6 - creates a minimal test submission to confirm the token and submission API work together.</summary>
         private string CheckSubmissionCreation(string SubmissionURL, string accessToken, List<DiagnosticResult> results)
         {
             var result = new DiagnosticResult { StepName = "Resistant AI Submission Creation" };
@@ -761,7 +831,7 @@ namespace tungstenlabs.integration.raidiagnostics
                     if (response.StatusCode == HttpStatusCode.Unauthorized || response.StatusCode == HttpStatusCode.Forbidden)
                     {
                         result.Passed = false;
-                        result.ErrorMessage = $"Submission creation failed with HTTP {(int)response.StatusCode}. The bearer token was rejected — possible token scope or permissions issue.";
+                        result.ErrorMessage = $"Submission creation failed with HTTP {(int)response.StatusCode}. The bearer token was rejected - possible token scope or permissions issue.";
                         result.SuggestedArea = "Authentication";
                     }
                     else if (response.IsSuccessStatusCode)
@@ -810,7 +880,7 @@ namespace tungstenlabs.integration.raidiagnostics
         }
 
         /// <summary>
-        /// Step 7 — generates a minimal valid PDF in memory, creates a new submission and uploads
+        /// Step 7 - generates a minimal valid PDF in memory, creates a new submission and uploads
         /// it to RAI via the S3 pre-signed URL. Proves S3 whitelisting without needing a TA document.
         /// Returns the submissionId for use in Step 8, or null on failure.
         /// </summary>
@@ -888,7 +958,7 @@ namespace tungstenlabs.integration.raidiagnostics
             {
                 result.Passed = false;
                 result.ErrorMessage = "An unexpected error occurred during the document upload.";
-                result.SuggestedArea = "Unknown — see Details";
+                result.SuggestedArea = "Unknown - see Details";
                 result.Details = ex.Message;
                 submissionId = null;
             }
@@ -898,7 +968,7 @@ namespace tungstenlabs.integration.raidiagnostics
         }
 
         /// <summary>
-        /// Step 8 — polls for the fraud analysis result of the submission created in Step 7.
+        /// Step 8 - polls for the fraud analysis result of the submission created in Step 7.
         /// Proves the full end-to-end path including RAI processing and result retrieval.
         /// </summary>
         private void CheckFraudResult(string SubmissionURL, string accessToken, string submissionId, List<DiagnosticResult> results)
@@ -983,7 +1053,7 @@ namespace tungstenlabs.integration.raidiagnostics
         /// </summary>
         private byte[] GenerateMinimalPdf()
         {
-            // Minimal valid PDF structure — single blank page
+            // Minimal valid PDF structure - single blank page
             string pdf =
                 "%PDF-1.4\n" +
                 "1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n" +
@@ -1034,7 +1104,7 @@ namespace tungstenlabs.integration.raidiagnostics
         }
 
         /// <summary>
-        /// Inlined server variable reader — no dependency on tungstenlabs.integration.resistantai.
+        /// Inlined server variable reader - no dependency on tungstenlabs.integration.resistantai.
         /// Returns a dictionary keyed by variable name with the value as a string.
         /// Throws if a variable is not found or is marked Secure (matches original ServerVariableHelper behaviour).
         /// </summary>

@@ -32,7 +32,7 @@ namespace tungstenlabs.integration.resistantai.tests
 
         // Shared submission IDs across tests
         // Run tests in order 1-10 in a single session for IDs to flow correctly
-        private static string _submissionId_NoProxy = "";
+        private static string _submissionId_NoProxy = "d2bb9162-5706-43d3-b12e-dfcf00a20376";
         private static string _submissionId_WithProxy = "";
         private static string _submissionId_Characteristics_NoProxy = "";
         private static string _submissionId_Characteristics_WithProxy = "";
@@ -267,10 +267,71 @@ namespace tungstenlabs.integration.resistantai.tests
 
 
         // =============================================
-        // 11. Diagnostics
+        // 12. No Proxy - Delete Submission
+        // Requires Test_02 to have run first in same session (uses _submissionId_NoProxy)
+        // Deletes the submission created in Test_02 — run this after any other test that
+        // still needs that submission to exist (e.g. Test_09 Bounding Boxes).
         // =============================================
         [TestMethod]
-        public void Test_11_RunDiagnostics()
+        public void Test_12_NoProxy_DeleteSubmission()
+        {
+            if (string.IsNullOrEmpty(_submissionId_NoProxy))
+                Assert.Inconclusive("Submission ID not available. Please run Test_02_NoProxy_FraudResult first in the same session.");
+
+            string status = oRAI.DeleteSubmission(
+                Constants.RAI_URL_API, _submissionId_NoProxy, 5,
+                Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID,
+                Constants.RAI_URL_TOKEN, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET);
+
+            Assert.AreEqual("DELETED", status, $"Expected DELETED but got: {status}");
+        }
+
+        // =============================================
+        // 13. With Proxy - Delete Submission
+        // Requires Test_03 to have run first in same session (uses _submissionId_WithProxy)
+        // Deletes the submission created in Test_03 — run this after any other test that
+        // still needs that submission to exist (e.g. Test_10 Bounding Boxes).
+        // =============================================
+        [TestMethod]
+        public void Test_13_WithProxy_DeleteSubmission()
+        {
+            if (string.IsNullOrEmpty(_submissionId_WithProxy))
+                Assert.Inconclusive("Submission ID not available. Please run Test_03_WithProxy_FraudResult first in the same session.");
+
+            string status = oRAI.DeleteSubmission1(
+                Constants.RAI_URL_API, _submissionId_WithProxy, 5,
+                Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID,
+                dO_ProxySettings,
+                Constants.RAI_URL_TOKEN, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET);
+
+            Assert.AreEqual("DELETED", status, $"Expected DELETED but got: {status}");
+        }
+
+        // =============================================
+        // 14. Delete Submission - NOT_FOUND handling
+        // Requires Test_12 to have run first in same session — deletes the SAME submission
+        // a second time to confirm the connector returns "NOT_FOUND" rather than throwing,
+        // for a submission that no longer exists.
+        // =============================================
+        [TestMethod]
+        public void Test_14_DeleteSubmission_NotFound()
+        {
+            if (string.IsNullOrEmpty(_submissionId_NoProxy))
+                Assert.Inconclusive("Submission ID not available. Please run Test_02_NoProxy_FraudResult and Test_12_NoProxy_DeleteSubmission first in the same session.");
+
+            string status = oRAI.DeleteSubmission(
+                Constants.RAI_URL_API, _submissionId_NoProxy, 5,
+                Constants.TOTALAGILITY_API_URL, Constants.TOTALAGILITY_SESSION_ID,
+                Constants.RAI_URL_TOKEN, Constants.RAI_CLIENT_ID, Constants.RAI_CLIENT_SECRET);
+
+            Assert.AreEqual("NOT_FOUND", status, $"Expected NOT_FOUND for an already-deleted submission but got: {status}");
+        }
+
+        // =============================================
+        // 15. Diagnostics
+        // =============================================
+        [TestMethod]
+        public void Test_15_RunDiagnostics()
         {
             var helper = new tungstenlabs.integration.raidiagnostics.DiagnosticHelper();
 
@@ -279,7 +340,7 @@ namespace tungstenlabs.integration.resistantai.tests
                 Constants.TOTALAGILITY_SESSION_ID
             );
 
-            
+
             Assert.IsFalse(string.IsNullOrEmpty(jsonResult), "Diagnostic result should not be empty");
         }
     }

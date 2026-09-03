@@ -64,8 +64,8 @@ using Newtonsoft.Json;
 
 namespace tungstenlabs.integration.resistantai
 {
-  
-    
+
+
 
     // authentication dataobject
     [DataContract]
@@ -113,7 +113,7 @@ namespace tungstenlabs.integration.resistantai
             if (settings == null)
                 return null;
 
-            
+
 
             if (string.IsNullOrWhiteSpace(settings.Url))
                 return null;
@@ -248,7 +248,7 @@ namespace tungstenlabs.integration.resistantai
                 {
                     shouldRetry = false;
                     bool enableDecisionValue = RetrieveEnableDecisionValue(taSessionId, taSdkUrl);
-                    
+
                     HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(SubmissionURL);
                     httpWebRequest.ContentType = "application/json";
                     httpWebRequest.Accept = "*/*";
@@ -401,7 +401,7 @@ namespace tungstenlabs.integration.resistantai
 
             HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse();
 
-           
+
             using (Stream responseStream = httpWebResponse.GetResponseStream())
             using (MemoryStream memoryStream = new MemoryStream())
             {
@@ -418,8 +418,96 @@ namespace tungstenlabs.integration.resistantai
             return result;
         }
 
+        /// <summary>
+        /// Attempts to retrieve the document's true source file via TA's GetSourceFile API.
+        /// Returns null if a source file does not exist for this document (this is expected/by-design
+        /// for image documents, and for documents split during Validation/Verification) — callers
+        /// should fall back to GetKTADocumentFile in that case, not treat it as a hard failure.
+        /// Per TA docs, GetSourceFile returns the file with redactions applied if redactions exist
+        /// and the document is a PDF.
+        /// </summary>
+        private byte[] GetSourceFileFromTA(string docID, string ktaSDKUrl, string sessionID)
+        {
+            var url = ktaSDKUrl + "/CaptureDocumentService.svc/json/GetSourceFile";
+            HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(url);
+
+            httpWebRequest.Proxy = null;
+            httpWebRequest.ContentType = "application/json";
+            httpWebRequest.Method = "POST";
+
+            using (var streamWriter = new StreamWriter(httpWebRequest.GetRequestStream()))
+            {
+                string json = "{\"sessionId\":\"" + sessionID + "\",\"reportingData\": {\"Station\": \"\", \"MarkCompleted\": false }, \"documentId\":\"" + docID + "\" }";
+                streamWriter.Write(json);
+                streamWriter.Flush();
+            }
+
+            try
+            {
+                using (HttpWebResponse httpWebResponse = (HttpWebResponse)httpWebRequest.GetResponse())
+                using (Stream responseStream = httpWebResponse.GetResponseStream())
+                using (StreamReader reader = new StreamReader(responseStream, Encoding.UTF8))
+                {
+                    string body = reader.ReadToEnd();
+                    JObject json = JObject.Parse(body);
+                    // TA wraps the payload in a "d" property for this SDK style.
+                    JToken payload = json["d"] ?? json;
+
+                    JToken sourceFileToken = payload["SourceFile"];
+                    if (sourceFileToken == null || sourceFileToken.Type == JTokenType.Null)
+                        return null;
+
+                    // Observed shape: a raw JSON array of byte values, e.g. [37,80,68,70,...].
+                    // Handle a base64 string shape too, in case a future TA version serializes differently.
+                    if (sourceFileToken.Type == JTokenType.Array)
+                    {
+                        var bytes = sourceFileToken.ToObject<byte[]>();
+                        return (bytes != null && bytes.Length > 0) ? bytes : null;
+                    }
+                    if (sourceFileToken.Type == JTokenType.String)
+                    {
+                        string base64 = sourceFileToken.ToString();
+                        if (string.IsNullOrWhiteSpace(base64)) return null;
+                        try { return Convert.FromBase64String(base64); }
+                        catch (FormatException) { return null; }
+                    }
+
+                    return null;
+                }
+            }
+            catch (WebException wex) when (wex.Response is HttpWebResponse errResponse)
+            {
+                // "A source file for this document does not exist." (ErrorCode -2147198781) is expected
+                // for image documents / split documents — treat as "no source file available", not a failure.
+                // Any other error also falls back silently here; UploadFiles' existing GetKTADocumentFile
+                // path is the proven fallback and should not be blocked by an unexpected GetSourceFile issue.
+                return null;
+            }
+            catch
+            {
+                // Same reasoning as above — any unexpected issue with GetSourceFile falls back
+                // to the existing, proven GetDocumentFile2 path rather than failing the upload outright.
+                return null;
+            }
+        }
+
+        /// <summary>
+        /// Retrieves the bytes to upload to RAI, preferring the true original document via
+        /// GetSourceFile (reliable for PDFs regardless of what Document Conversion / PDF Generation
+        /// have run) and falling back to the existing GetDocumentFile2-based logic when a source
+        /// file is not available (expected for image documents).
+        /// </summary>
+        private byte[] GetOriginalDocumentBytes(string docID, string ktaSDKUrl, string sessionID)
+        {
+            byte[] sourceFileBytes = GetSourceFileFromTA(docID, ktaSDKUrl, sessionID);
+            if (sourceFileBytes != null && sourceFileBytes.Length > 0)
+                return sourceFileBytes;
+
+            return GetKTADocumentFile(docID, ktaSDKUrl, sessionID);
+        }
+
         private string[] UploadFiles(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
-                                     string QueryId, string DocID, string TASDKURL, string TASession, string characteristicsJson = null, 
+                                     string QueryId, string DocID, string TASDKURL, string TASession, string characteristicsJson = null,
                                      bool enableSubmissionCharacteristics = false)
         {
             EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
@@ -428,8 +516,8 @@ namespace tungstenlabs.integration.resistantai
 
             try
             {
-                
-                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL, QueryId, enableSubmissionCharacteristics);                
+
+                objSubmission = Submission(AuthenticationURL, SubmissionURL, ClientID, ClientSecret, TASession, TASDKURL, QueryId, enableSubmissionCharacteristics);
 
                 if (enableSubmissionCharacteristics)
                 {
@@ -442,7 +530,7 @@ namespace tungstenlabs.integration.resistantai
                     characteristicsStatus = "Submission Characteristics submitted successfully.";
                 }
 
-                byte[] FileArray = GetKTADocumentFile(DocID, TASDKURL, TASession);
+                byte[] FileArray = GetOriginalDocumentBytes(DocID, TASDKURL, TASession);
 
                 HttpWebRequest httpWebRequest = (HttpWebRequest)WebRequest.Create(objSubmission.upload_url);
                 httpWebRequest.ContentType = "application/octet-stream";
@@ -471,92 +559,92 @@ namespace tungstenlabs.integration.resistantai
         }
 
         private async Task<string> SubmitSubmissionCharacteristicsAsync(string AuthenticationURL, string submissionUrl, string submissionId, string characteristicsJson, string TASDKURL, string TASession, string ClientID, string ClientSecret)
-{
-    if (string.IsNullOrWhiteSpace(submissionId))
-        throw new ArgumentException("submissionId is required.");
-
-    if (string.IsNullOrWhiteSpace(characteristicsJson))
-        throw new ArgumentException("characteristicsJson is required.");
-
-    // Clean JSON once before sending
-    characteristicsJson = CleanCharacteristicsJson(characteristicsJson);
-
-    HttpClientHandler handler = new HttpClientHandler();
-
-    if (_cachedProxy != null)
-    {
-        handler.Proxy = _cachedProxy;
-        handler.UseProxy = true;
-    }
-    else
-    {
-        handler.UseProxy = false;
-    }
-
-    using (HttpClient httpClient = new HttpClient(handler))
-    {
-        httpClient.DefaultRequestHeaders.Authorization =
-            new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
-
-        string requestUri = $"{submissionUrl}/{submissionId}/characteristics";
-        bool shouldRetry = false;
-        bool hasRetried = false;
-
-        do
         {
-            try
-            {
-                shouldRetry = false;
+            if (string.IsNullOrWhiteSpace(submissionId))
+                throw new ArgumentException("submissionId is required.");
 
-                using (var content = new StringContent(characteristicsJson, Encoding.UTF8, "application/json"))
+            if (string.IsNullOrWhiteSpace(characteristicsJson))
+                throw new ArgumentException("characteristicsJson is required.");
+
+            // Clean JSON once before sending
+            characteristicsJson = CleanCharacteristicsJson(characteristicsJson);
+
+            HttpClientHandler handler = new HttpClientHandler();
+
+            if (_cachedProxy != null)
+            {
+                handler.Proxy = _cachedProxy;
+                handler.UseProxy = true;
+            }
+            else
+            {
+                handler.UseProxy = false;
+            }
+
+            using (HttpClient httpClient = new HttpClient(handler))
+            {
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                string requestUri = $"{submissionUrl}/{submissionId}/characteristics";
+                bool shouldRetry = false;
+                bool hasRetried = false;
+
+                do
                 {
-                    HttpResponseMessage response = await httpClient.PutAsync(requestUri, content).ConfigureAwait(false);
-
-                    if (response.StatusCode == HttpStatusCode.Unauthorized ||
-                        response.StatusCode == HttpStatusCode.Forbidden)
+                    try
                     {
-                        if (hasRetried)
-                            throw new Exception("Submission Characteristics API authentication failed after token refresh.");
+                        shouldRetry = false;
 
-                        shouldRetry = true;
-                        hasRetried = true;
+                        using (var content = new StringContent(characteristicsJson, Encoding.UTF8, "application/json"))
+                        {
+                            HttpResponseMessage response = await httpClient.PutAsync(requestUri, content).ConfigureAwait(false);
 
-                        AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+                            if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                                response.StatusCode == HttpStatusCode.Forbidden)
+                            {
+                                if (hasRetried)
+                                    throw new Exception("Submission Characteristics API authentication failed after token refresh.");
 
-                        ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
-                        var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
-                        dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(
-                            dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
-                        serverVariableHelper.UpdateServerVariables(
-                            dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+                                shouldRetry = true;
+                                hasRetried = true;
 
-                        httpClient.DefaultRequestHeaders.Authorization =
-                            new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+                                AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                                ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                                var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                                dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(
+                                    dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                                serverVariableHelper.UpdateServerVariables(
+                                    dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+
+                                httpClient.DefaultRequestHeaders.Authorization =
+                                    new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+                            }
+                            else if (response.StatusCode == HttpStatusCode.NoContent)
+                            {
+                                return "SUCCESS";
+                            }
+                            else
+                            {
+                                string errorContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                                throw new Exception($"Submission Characteristics API failed. StatusCode={(int)response.StatusCode}. Response={errorContent}");
+                            }
+                        }
                     }
-                    else if (response.StatusCode == HttpStatusCode.NoContent)
+                    catch (HttpRequestException ex) when (IsProxyAuthError(ex))
                     {
-                        return "SUCCESS";
+                        throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
                     }
-                    else
+                    catch (HttpRequestException ex)
                     {
-                        string errorContent = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
-                        throw new Exception($"Submission Characteristics API failed. StatusCode={(int)response.StatusCode}. Response={errorContent}");
+                        throw new Exception($"Submission Characteristics API request failed: {ex.Message}", ex);
                     }
-                }
+                } while (shouldRetry);
             }
-            catch (HttpRequestException ex) when (IsProxyAuthError(ex))
-            {
-                throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
-            }
-            catch (HttpRequestException ex)
-            {
-                throw new Exception($"Submission Characteristics API request failed: {ex.Message}", ex);
-            }
-        } while (shouldRetry);
-    }
 
-    return "SUCCESS";
-}
+            return "SUCCESS";
+        }
 
 
 
@@ -798,6 +886,20 @@ namespace tungstenlabs.integration.resistantai
                             result[1] = resultJson["reason"]?["sub_reason"]?["label"]?.ToString();
                             break;
                         }
+
+                        // RAI can return a structured, non-decision status (e.g. INVALID_INPUT when the
+                        // underlying Fraud/forensics result was already invalid, such as a password-protected
+                        // document). This is a definitive answer, not a "not ready yet" state — retrying
+                        // further would just burn the remaining attempts for no benefit. Surface it directly
+                        // instead of the generic "Could not get Adaptive Decision result" fallback below.
+                        var status = resultJson["status"]?.ToString();
+                        if (!string.IsNullOrWhiteSpace(status))
+                        {
+                            var message = resultJson["message"]?.ToString();
+                            result[0] = status;
+                            result[1] = !string.IsNullOrWhiteSpace(message) ? message : status;
+                            break;
+                        }
                     }
                     catch (HttpRequestException ex) when (IsProxyAuthError(ex))
                     {
@@ -823,6 +925,144 @@ namespace tungstenlabs.integration.resistantai
 
 
 
+        /// <summary>
+        /// Deletes a submission and its associated data from RAI, per DELETE /v2/submission/{submission_id}.
+        /// Handles RAI's documented response codes:
+        ///   204/200  — deleted successfully
+        ///   401/403  — refresh token and retry (same pattern as the other RAI calls)
+        ///   404      — submission not found (already deleted, or never existed) — returned as a
+        ///              distinct status rather than treated as success or thrown as an error, so the
+        ///              caller/process can decide how to handle it
+        ///   409      — submission still being processed; retry with backoff per RAI's guidance
+        ///   429      — rate limited; retry with exponential backoff + jitter per RAI's guidance
+        /// </summary>
+        private async Task<string> DeleteSubmissionAsync(string submissionUrl, string submissionId, int maxAttempts,
+            string AuthenticationURL, string ClientID, string ClientSecret, string TASession, string TASDKURL)
+        {
+            var handler = new HttpClientHandler();
+            if (_cachedProxy != null)
+            {
+                handler.Proxy = _cachedProxy;
+                handler.UseProxy = true;
+            }
+            else
+            {
+                handler.UseProxy = false;
+            }
+
+            using (HttpClient httpClient = new HttpClient(handler))
+            {
+                httpClient.DefaultRequestHeaders.Authorization =
+                    new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                var requestUri = $"{submissionUrl}/{submissionId}";
+                int attempt = 0;
+                var random = new Random();
+
+                while (attempt <= maxAttempts)
+                {
+                    try
+                    {
+                        var request = new HttpRequestMessage(HttpMethod.Delete, requestUri);
+                        var response = await httpClient.SendAsync(request).ConfigureAwait(false);
+
+                        if (response.StatusCode == HttpStatusCode.Unauthorized ||
+                            response.StatusCode == HttpStatusCode.Forbidden)
+                        {
+                            AuthToken = RefreshAuthToken(AuthenticationURL, ClientID, ClientSecret);
+
+                            ServerVariableHelper serverVariableHelper = new ServerVariableHelper();
+                            var dict = serverVariableHelper.GetServerVariables(TASession, TASDKURL, new List<string>() { RAI_CLIENT_TOKEN });
+                            dict[RAI_CLIENT_TOKEN] = new KeyValuePair<string, string>(dict[RAI_CLIENT_TOKEN].Key, AuthToken.access_token);
+                            serverVariableHelper.UpdateServerVariables(
+                                dict.ToDictionary(kvp => kvp.Value.Key, kvp => kvp.Value.Value), TASession, TASDKURL);
+
+                            httpClient.DefaultRequestHeaders.Authorization =
+                                new AuthenticationHeaderValue("Bearer", AuthToken.access_token);
+
+                            attempt++;
+                            continue;
+                        }
+
+                        if (response.StatusCode == HttpStatusCode.NotFound)
+                        {
+                            return "NOT_FOUND";
+                        }
+
+                        if (response.StatusCode == HttpStatusCode.Conflict)
+                        {
+                            // Submission still being processed — retry with a growing delay, matching
+                            // the pattern used elsewhere in this connector for transient conditions.
+                            if (attempt >= maxAttempts)
+                                throw new Exception($"Submission is still being processed and could not be deleted after {attempt} attempts (409 Conflict).");
+
+                            await Task.Delay(2000 + (1000 * attempt)).ConfigureAwait(false);
+                            attempt++;
+                            continue;
+                        }
+
+                        if ((int)response.StatusCode == 429)
+                        {
+                            // Rate limited — exponential backoff with jitter, per RAI's documented guidance.
+                            if (attempt >= maxAttempts)
+                                throw new Exception($"Delete request was rate limited (429) after {attempt} attempts.");
+
+                            int backoffMs = (int)Math.Pow(2, attempt) * 1000;
+                            int jitterMs = random.Next(0, 500);
+                            await Task.Delay(backoffMs + jitterMs).ConfigureAwait(false);
+                            attempt++;
+                            continue;
+                        }
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            return "DELETED";
+                        }
+
+                        string errorBody = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+                        throw new Exception($"Delete failed: HTTP {(int)response.StatusCode} — {errorBody}");
+                    }
+                    catch (HttpRequestException ex) when (IsProxyAuthError(ex))
+                    {
+                        throw new Exception("Proxy authentication failed (HTTP 407). Please verify proxy settings.", ex);
+                    }
+                }
+
+                throw new Exception($"Could not delete submission {submissionId} after {maxAttempts} attempts.");
+            }
+        }
+
+        // ============================================================
+        // ENTRY POINTS - DELETE SUBMISSION
+        // ============================================================
+
+        /// <summary>
+        /// Deletes a submission from RAI. Returns "DELETED" on success, "NOT_FOUND" if the
+        /// submission does not exist (already deleted or never existed), or throws for other
+        /// failures (e.g. still processing after all retries, rate limited after all retries).
+        /// </summary>
+        public string DeleteSubmission(string submissionUrl, string submissionId, int NumberOfRetries,
+            string TASDKURL, string TASession, string AuthenticationURL, string ClientID, string ClientSecret)
+        {
+            _cachedProxy = null;
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
+            return DeleteSubmissionAsync(submissionUrl, submissionId, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL)
+                .GetAwaiter().GetResult();
+        }
+
+        /// <summary>Same as DeleteSubmission, but routes the request through the supplied proxy.</summary>
+        public string DeleteSubmission1(string submissionUrl, string submissionId, int NumberOfRetries,
+            string TASDKURL, string TASession, DO_ProxySettings proxySettings,
+            string AuthenticationURL, string ClientID, string ClientSecret)
+        {
+            _cachedProxy = BuildProxyFromSettings(proxySettings);
+            if (_cachedProxy == null)
+                throw new ArgumentException("Proxy settings are required for DeleteSubmission1. Provide proxySettings.Enable=true and a valid proxySettings.Url.");
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
+            return DeleteSubmissionAsync(submissionUrl, submissionId, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL)
+                .GetAwaiter().GetResult();
+        }
+
         private bool IsProxyAuthError(HttpRequestException ex)
         {
             var webEx = ex.InnerException as WebException;
@@ -844,7 +1084,7 @@ namespace tungstenlabs.integration.resistantai
         public string[] GetAdaptiveResult(string submissionUrl, string submissionId, int NumberOfRetries, string TASDKURL, string TASession, string AuthenticationURL, string ClientID, string ClientSecret)
         {
             _cachedProxy = null;
-            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);            
+            EnsureValidToken(AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL);
             return FetchAdaptiveResultAsync(submissionUrl, submissionId, NumberOfRetries, TASDKURL, TASession, AuthenticationURL, ClientID, ClientSecret).GetAwaiter().GetResult();
         }
 
@@ -1054,7 +1294,7 @@ namespace tungstenlabs.integration.resistantai
 
         // New entry point: WITH proxy
         public string[] UploadFileAndFetchResultsWithRetries1(string AuthenticationURL, string SubmissionURL, string ClientID, string ClientSecret,
-                                string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries, 
+                                string QueryId, string DocID, string TASDKURL, string TASession, int NumberOfRetries,
                                 DO_ProxySettings proxySettings, out string SuspendReason)
         {
             SuspendReason = "";
@@ -1083,7 +1323,7 @@ namespace tungstenlabs.integration.resistantai
                 try
                 {
                     SuspendReason = "";
-                    result[0] = SubmissionID;                    
+                    result[0] = SubmissionID;
                     result[1] = FetchResultsAsync(SubmissionURL, SubmissionID, NumberOfRetries, AuthenticationURL, ClientID, ClientSecret, TASession, TASDKURL).GetAwaiter().GetResult();
                 }
                 catch
